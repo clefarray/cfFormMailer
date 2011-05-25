@@ -1,0 +1,660 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<title>cfFormMailerマニュアル v1.1r2</title>
+<style type="text/css">
+body { line-height: 140%;}
+li { margin-bottom: 5px;}
+h1 { background: #069; color: #fff; padding: 10px; border: 5px double #258; margin: 0px 0px 10px 0px;}
+h2 { color: #FFF; background: #069; padding: 5px;}
+h3 { margin-left: 20px; margin-top: 40px; color: #036; border-bottom: 1px dotted #069; padding-bottom: 5px; font-size: 116%;}
+h4 { margin-left: 30px; color: #036; margin-bottom: 10px; font-size: 108%;}
+h5 { margin-left: 50px; font-size: 100%;}
+p { margin-left: 50px;}
+ol, ul, dl { margin-left: 50px; padding-left: 20px;}
+dt { font-weight: bold; color: #052;}
+dd { margin-bottom: 5px; padding-left: 20px; margin-left: 0px;}
+pre { margin-left: 50px; padding: 5px; border: 1px dotted #ffa; background: #ffc;}
+code { background: #ffc; padding: 3px;}
+strong { font-size: large;}
+#version { text-align: right; margin-bottom: 20px;}
+.note { color: #666; font-size: 90%;}
+.new { font-size: x-small; color: #f00; font-weight: bold;}
+</style>
+</head>
+
+<body>
+<h1>cfFormMailerマニュアル</h1>
+<p id="version"><strong>v1.2</strong></p>
+<ul>
+  <li><a href="#c1">設置＆使用方法</a></li>
+  <li><a href="#c2">機能解説</a></li>
+  <li><a href="#c3">eFormとの差異</a></li>
+  <li><a href="#c4">バグレポート、お問い合わせ、サポート</a></li>
+  <li><a href="#c5">ご注意、免責事項</a></li>
+  <li><a href="#c6">更新履歴</a></li>
+</ul>
+
+<h2 id="c1"> ■ 設置＆使用方法</h2>
+
+<h3>【インストール】</h3>
+<ol>
+  <li>/assets/snippets/ フォルダ内に <strong>cfFormMailer</strong> というフォルダを作成し、そのフォルダ内に以下のファイルを配置（アップロード）します。<br />
+  <span class="note">※v1.0以降、class.cfFormMailerMODx.inc.phpは不要となります。</span>
+    <ul>
+    <li>class.cfFormMailer.inc.php</li>
+    <li>phpmailer_ex.php （※v1.1r2で追加）</li>
+    <li>additionalMethods.inc.php (※独自検証メソッドまたは独自フィルターメソッドを追加しない場合は、アップロードしなくても構いません。）</li>
+    </ul>
+  </li>
+  <li>（ファイルアップロードを使用する場合） <a href="http://www.verot.net/php_class_upload.htm" target="_blank">class.upload.php</a>を/assets/snippets/cfFormMailer/フォルダにアップロードします。（任意） <br />
+    ※「<a href="#upload">ユーザーがアップロードしたファイルの添付送信</a>」参照<br />
+    class.upload.phpはColin Verot氏作の画像アップロードライブラリです。<br />
+  ダウンロード先： <a href="http://www.verot.net/php_class_upload_download.htm" target="_blank">http://www.verot.net/php_class_upload_download.htm</a></li>
+  <li>（ファイルアップロードを使用する場合） プラグインcfFileViewをインストールします。<br />
+  「<a href="#upload">ユーザーがアップロードしたファイルの添付送信</a>」を参照してください。  </li>
+  <li>（送信内容を記録する場合） cfFormDBモジュールをインストールします。<br />
+  詳細はcfFormDBのマニュアルを参照してください。</li>
+  <li>modxの管理画面にログインし、以下の情報で新規スニペットを作成します。<br />
+    ■スニペット名： cfFormMailer<br />
+    ■スニペットコード欄： ファイル snippet.cfFormMailer.php の内容をコピー＆ペースト</li>
+  <li>「環境設定」として利用するチャンクを作成します。<br />
+  ■チャンク名： 任意 ※スニペットコール時に、ここで作成したチャンク名を指定します。<br />
+  ■チャンクコード： chunk_sample フォルダ内のファイル tmpl.chunk_config.txt の内容をすべてコピー＆ペースト</li>
+  <li>各設定項目の値をご利用の環境に合わせて書き換え、保存してください。<br />
+    # で始まる行はコメントです。</li>
+</ol>
+
+
+<h3>【環境設定項目】</h3>
+<p>上記インストール手順5で作成する”環境設定チャンク”には、以下の設定項目が用意されています。
+</p>
+<h4>管理者宛メール関連</h4>
+<dl>
+  <dt>管理者メール送信先 [admin_mail]</dt>
+  <dd>フォームの送信先メールアドレスを指定します。半角コンマ区切りで複数のメールアドレスを指定することができます。<br />
+    [デフォルト] modxシステムの「送信者メールアドレス」<br />
+  [設定例] admin_mail = info@example.com,conact@example.com</dd>
+  <dt>送信者名 [admin_name]</dt>
+  <dd>上記”管理者メール送信先”へ送信されるメールの送信者名を指定します。<br />
+  [設定例] admin_name = フォーム送信者</dd>
+  <dt>管理者宛メール件名 [admin_subject]</dt>
+  <dd>管理者宛に送信されるメールの件名を指定します。<br />
+    [デフォルト] サイトから送信されたメール<br />
+    [設定例] 
+  admin_subject = メールフォームから送信されたメール</dd>
+  <dt>管理者宛メール HTMLメールフラグ [admin_ishtml]</dt>
+  <dd>管理者宛に送信されるメールがHTMLメールかどうかを指定します。<br />
+    [設定値] 0・・・テキストメール / 1・・・HTMLメール<br />
+  [デフォルト] 0</dd>
+</dl>
+<h4>自動返信メール関連</h4>
+<dl>
+  <dt>自動返信メールフラグ [auto_reply]</dt>
+  <dd>フォーム送信者に対して自動返信メールを送信するかどうかを指定します。<br />
+    [設定値] 0・・・送信しない / 1・・・送信する<br />
+  [デフォルト] 0</dd>
+  <dt>自動返信メールの送信先として使用するフィールド名 [reply_to]</dt>
+  <dd>自動返信メールの送信先として使用するフィールド名を指定します。<br />
+  単一のフィールド、または複数のフィールドを組み合わせたものを指定できます。<br />
+  複数のフィールドを指定する場合は、半角プラス記号でフィールド名をつないで指定します。また、半角アットマークはそのまま記述します。<br />
+  [デフォルト] email<br />
+  [設定例] reply_to = email1+@+email2<br />
+  （この例の場合、email1フィールドの値が info で、email2フィールドの値がdocomo2.ne.jp だった場合、送信先アドレスは info@docomo2.ne.jp になります。）</dd>
+  <dt>自動返信メールの送信者メールアドレス [reply_from]</dt>
+  <dd>自動返信メールの送信者メールアドレスを指定します。<br />
+    [デフォルト] 管理者メールアドレス（admin_mail）
+  。admin_mailに複数のアドレスが指定されている場合は先頭のアドレス。<br />
+  [設定例] reply_from = info2@example.com</dd>
+  <dt>自動返信メールの送信者名 [reply_fromname]</dt>
+  <dd>自動返信メールの送信者名を指定します。<br />
+    [デフォルト] modxサイト名
+  （[(site_name)])<br />
+  [設定例] reply_fromname = 株式会社○×</dd>
+  <dt>自動返信メールの件名 [reply_subject]</dt>
+  <dd>自動返信メールの件名を指定します。<br />
+    [デフォルト] 自動返信メール<br />
+    [設定例] reply_subject = お問い合わせありがとうございます
+  </dd>
+  <dt>自動返信メールのHTMLメールフラグ [reply_ishtml]</dt>
+  <dd>自動返信されるメールがHTMLメールかどうかを指定します。<br />
+[設定値] 0・・・テキストメール / 1・・・HTMLメール<br />
+[デフォルト] 0</dd>
+  <dt>添付するファイル [attach_file] <span class="new">NEW in v1.0</span></dt>
+  <dd>自動返信メールに添付するファイルを絶対パスで指定します。<br />
+  半角コンマ区切りで、複数のファイルを指定することができます。<br />
+  なお、ファイル名は必ず半角英数字で指定し、漢字・ひらがな・カタカナ・全角記号等は使わないでください。  <br />
+  [設定例] attach_file = /var/sample/pdf/guidebook.pdf,/var/sample/word/entrysheet.doc</dd>
+  <dt>添付するファイルの名称 [attach_file_name] <span class="new">NEW in v1.0</span></dt>
+  <dd>前項で指定するファイル名に漢字・ひらがな等が使用出来ないため、添付送信するファイルにこれらの文字を使用したい場合に指定します。<br />
+  複数のファイルを指定する場合は、attach_fileでの指定順に合わせて、半角コンマで区切って指定します。<br />
+  [設定例]
+  attach_file_name = 募集要項.pdf,エントリーシート.doc</dd>
+</dl>
+<h4>テンプレート関連</h4>
+<dl>
+  <dt>入力画面テンプレート [tmpl_input]</dt>
+  <dd>入力画面のテンプレートとして使用するチャンク名を指定します。<br />
+  [設定例] tmpl_input = tmpl_input</dd>
+  <dt>確認画面テンプレート [tmpl_conf]</dt>
+  <dd>送信内容確認画面テンプレートとして使用するチャンク名を指定します。<br />
+  [設定例] tmpl_conf = tmpl_conf</dd>
+  <dt>完了画面テンプレート [tmpl_comp]</dt>
+  <dd>送信完了画面テンプレートとして使用するチャンク名を指定します。<br />
+  [設定例] tmpl_comp = tmpl_comp</dd>
+  <dt>管理者宛メールテンプレート [tmpl_mail_admin]</dt>
+  <dd>管理者宛メールのテンプレートとして使用するチャンク名を指定します。<br />
+  [設定例] tmpl_mail_admin = tmpl_mail_admin</dd>
+  <dt>自動返信メールテンプレート [tmpl_mail_reply]</dt>
+  <dd>自動返信メールのテンプレートとして使用するチャンク名を指定します。<br />
+  [設定例] tmpl_mail_reply = tmpl_mail_reply</dd>
+  <dt>自動返信メールテンプレート（モバイル用） [tmpl_mail_reply_mobile] <span class="new">NEW in v1.0</span></dt>
+  <dd>モバイル宛自動返信メールのテンプレートとして使用するチャンク名を指定します。<br />
+  モバイル宛テンプレートを使用しない場合は空欄にしてください。<br />
+  [設定例] tmpl_mail_reply_mobile = tmpl_mail_reply_mobile</dd>
+</dl>
+<h4>その他の設定</h4>
+<dl>
+  <dt>CAPTCHAによる認証 [vericode] <span class="new">NEW in v0.0.5</span></dt>
+  <dd>CAPTCHAによる画像認証の仕様有無を指定します。<br />
+    [設定値] 0・・・使用しない / 1・・・使用する<br />
+  [デフォルト] 0</dd>
+  <dt>エラーフィールドに挿入されるクラス名 [invalid_class]</dt>
+  <dd>検証エラーのあるフィールド（input,textarea,selectタグ）に付加されるクラスセレクタ名を指定します。<br />
+    使用しない場合は空欄にしてください。<br />
+  [設定例] invalid_class = invalid</dd>
+  <dt>メール内HTMLタグ使用許可 [allow_html]</dt>
+  <dd>管理者宛や自動返信をHTMLメールとして送信する場合、フォーム送信者が記入したHTMLタグを有効にするかどうかを指定します。<br />
+  [設定値] 0・・・HTMLタグ使用不可（タグは無効化されます） / 1・・・使用する<br />
+  [デフォルト] 0
+  </dd>
+  <dt>ファイルアップロード時に使用するディレクトリの設定[upload_tmp_path] <span class="new">NEW in v1.1r2</span></dt>
+  <dd>※このオプションは<a href="http://www.clefarray-web.net/blog/archive/2010/05/cfformmailer-2.html" target="_blank">「[バグ]cfFormMailerでファイルアップロードができない場合の対処</a>」への対応です。<br />
+    フォーム送信者によるファイルアップロード送信機能を使用する場合に、アップロードされたファイルの一時保管方法を指定します。<br />
+    通常は0（デフォルト）で大丈夫ですが、XREAなど、SAFE Modeがonの環境でファイルアップロード送信がうまくいかない場合は1にしてください。    <br />
+    （1の場合、asset/snippets/cfFormMailer/tmpディレクトリに書き込みができるようパーミッション設定を行ってください。）<br />
+    [設定値] 0･･･サーバデフォルトのテンポラリエリア / 1･･･スニペットディレクトリ内のtmpディレクトリ<br />
+    [デフォルト] 0
+  </dd>
+  <dt>改行スタイル[LF_style] <span class="new">NEW in v1.1r2</span></dt>
+  <dd>送信するメールのヘッダに使われる改行コード。通常は変更しなくても大丈夫だと思います。<br />
+    [設定値] 0･･･\n (linuxスタイル) / 1･･･\r\n (windowsスタイル)<br />
+    [デフォルト] 0
+  </dd>
+  <dt>送信内容をデータベースに記録する[use_store_db] <span class="new">NEW in v1.2</span></dt>
+  <dd>フォームの送信内容をデータベースに記録します。<br />
+  この機能を使用するには、あらかじめcfFormDBモジュールをインストールし、記録用テーブルを作成しておく必要があります。<br />
+  [設定値] 0･･･記録しない / 1･･･記録する<br />
+  [デフォルト] 0
+  </dd>
+  <dt>メール送信フラグ[send_mail] <span class="new">NEW in v1.2</span></dt>
+  <dd>メールを送信するかどうかを指定します。0を指定すると、管理者宛、自動送信宛ともに送信しなくなります。<br />
+  [設定値] 0･･･送信しない / 1･･･送信する<br />
+  [デフォルト] 1</dd>
+</dl>
+<h3>【テンプレートの作成 】</h3>
+<p>入力・確認・完了の各画面や、送信されるメールのテンプレートは、すべてチャンクによって管理されます。<br />
+各チャンク名はデフォルトで名称が指定されていますが、これらは環境設定チャンク内で変更できます。<br />
+パッケージのchunk_sampleフォルダ内に各チャンクのサンプルコードがありますので、参考にしてみて下さい。</p>
+<ol>
+  <li>「入力画面」テンプレートの作成<br />
+  任意の名称（デフォルト：tmpl_input）で新規チャンクを作成し、入力画面のHTMLを記述します。<br />
+  サンプル： form.html</li>
+  <li>「確認画面」テンプレートの作成<br />
+  任意の名称（デフォルト：tmpl_conf）で新規チャンクを作成し、確認画面のHTMLを記述します。<br />
+  サンプル： confirm.html</li>
+  <li>「完了画面」テンプレートの作成<br />
+    任意の名称（デフォルト：tmpl_comp）で新規チャンクを作成し、完了画面のHTMLを記述します。    <br />
+  サンプル： thanks.html</li>
+  <li>「管理者宛メール」テンプレートの作成<br />
+    任意の名称（デフォルト：tmpl_mail_admin）で新規チャンクを作成し、管理者宛メールの本文テンプレートを記述します。    <br />
+  サンプル： mail.txt</li>
+  <li>「自動返信メール」テンプレートの作成<br />
+    任意の名称（デフォルト：tmpl_mail_reply）で新規チャンクを作成し、自動返信メールの本文テンプレートを記述します。    <br />
+    サンプル： reply_mail.txt<br />
+  </li>
+  <li>「自動返信メール（モバイル用）」テンプレートの作成　※PCメール宛と携帯メール宛でテンプレートを変えたい場合　<span class="new">NEW in v1.0　</span><br />
+    任意の名称で新規チャンクを作成し、モバイル端末用の自動返信メール本文テンプレートを記述します。    <br />
+    ここで作成したチャンクの名称を、環境設定チャンク内の tmpl_mail_reply_mobile 項目に記述します。<br />
+    サンプル： mobile_reply_mail.txt<br />
+  </li>
+</ol>
+
+<h3>【旧バージョンからのバージョンアップ】</h3>
+<p>【v1.0/v1.1からのバージョンアップ】<br />
+  assets/snippets/cfFormMailer/フォルダ 内のすべてのファイルを置き換えます。<br />
+  必要に応じて、新たに追加された環境設定項目を環境設定チャンクに追加、設定します。<br />
+  <br />
+【v1.0以前からのバージョンアップの場合】<br />
+スニペット内に独自検証メソッド、独自フィルターを定義している場合は、スニペット内からadditionalMethods.inc.phpファイル内に転記します。<br />
+  その後、assets/snippets/cfFormMailer/フォルダ 内のすべてのファイルを置き換え、MODx 内スニペットの内容をsnippet.cfFormMailer.phpと置き換えます。<br />
+  ※ 各テンプレートはそのまま利用できます。<br />
+※ 環境設定チャンクも従来のものがそのまま使用できますが、設定項目が増えていますので、上記インストール手順5 で最新のものに変更し再定義することをお勧めします。</p>
+<h3>【スニペットコール書式】</h3>
+<p><code><strong>[!cfFormMailer?&amp;config=`環境設定チャンク名`!]</strong></code></p>
+<p>config パラメータは必須で、【インストール】手順5で作成した「環境設定チャンク」の名称を指定します。</p>
+
+
+<h2 id="c2">■ 機能解説</h2>
+
+<h3>【入力値の検証】</h3>
+<p> フォーム内の各フィールドに対して、入力値の検証を行うことができます。
+<h4> [書式]  </h4>
+<p><code>&lt;input type="text" name="field_name" value="" <strong>valid="required:method:label"</strong> /&gt;</code>
+<dl>
+  <dt>required</dt>
+  <dd>入力必須項目（1-yes / NULL-no)</dd>
+  <dt>method</dt>
+  <dd>検証項目。コンマ区切りで複数指定可。以下の標準装備の方式以外にも、独自の方式も指定可能。（下記「検証メソッドの追加」参照。）<br />
+    <dl>
+      <dt>email</dt>
+      <dd>メールアドレスチェック（半角に強制変換）</dd>
+      <dt>num</dt>
+      <dd>数値チェック（半角に強制変換）</dd>
+      <dt>len(n-m) </dt>
+      <dd>文字数チェック（m文字以下 | n～m文字 | n文字以上）</dd>
+      <dt>range(n~m) <span class="new">NEW in v0.0.5</span></dt>
+      <dd>数値の値範囲チェック（m以下 | n～m | n以上）<br />※n,mで指定した数値は範囲に含まれます</dd>
+      <dt>sameas(フィールド名)  <span class="new">NEW in v0.0.6</span></dt>
+      <dd>「フィールド名」で指定したフィールドと同値かをチェック。</dd>
+      <dt>tel <span class="new">NEW in v0.0.7</span></dt>
+      <dd>正しい電話番号形式かどうかをチェック（半角に強制変換）</dd>
+      <dt>vericode <span class="new">NEW in v0.0.5</span></dt>
+      <dd>画像認証</dd>
+      <dt>allowtype(形式名) <span class="new">NEW in v1.0</span></dt>
+      <dd>アップロードを許可する形式名。「|」 記号で区切って複数指定可。<br />
+      [形式名の選択肢] </dd>
+    </dl>
+    <ul style="margin-left: 80px;">
+      <li> gif ･･･ GIF画像</li>
+      <li>jpg ･･･ JPEG画像</li>
+      <li>png ･･･ PNG画像</li>
+      <li>pdf ･･･ PDFファイル</li>
+      <li>txt ･･･ テキストファイル</li>
+      <li>html ･･･ HTMLファイル</li>
+      <li>word ･･･ MS-Wordファイル</li>
+    </ul>
+    <dl>
+      <dt>allowsize(数値) <span class="new">NEW in v1.0</span></dt>
+      <dd>アップロードを許可する最大ファイルサイズ。キロバイト単位で指定。</dd>
+      <dt>convert(変換オプション) <span class="new">NEW in v1.2</span></dt>
+      <dd>「変換オプション」に従って入力値を変換します。<br />
+      変換オプションはPHP関数<a href="http://jp.php.net/manual/ja/function.mb-convert-kana.php" target="_blank">mb_convert_kana()</a>と同じものとなり、未指定の場合は「<strong>K</strong>」（半角カタカナを全角カタカナに変換）となります。<br />
+      ※このメソッドのみ”検証”ではなく”変換”となります。検証エラーが発生する事はありません。</dd>
+      <dt>url <span class="new">NEW in v1.2</span></dt>
+      <dd>入力値がURIかどうかを簡易的にチェックします。</dd>
+    </dl>
+  </dd>
+  <dt>label <span class="new">NEW in v1.0</span></dt>
+  <dd>エラー表示用（[+errors+]プレースホルダ利用時）に使用する項目名。<br />
+    &lt;label&gt;を使用したラベルよりも優先されます。
+      <br />
+  未指定の場合はname属性の値が使用されます。</dd>
+</dl>
+<h4> [例]  </h4>
+<ul>
+  <li>この項目は入力必須であり、数字（0-9）のみ入力を許可する <br />
+  <code>&lt;input type="text" name="age" size="3" valid="<strong>1:num</strong>" /&gt;</code></li>
+  <li>
+    8文字以内で入力させる
+    <br />
+  <code>&lt;input type="text" name="pass" size="10" valid=":<strong>len(-8)</strong>" /&gt;</code></li>
+  <li>    10文字以上12文字以内の数値のみ許可する
+    <br />
+  <code>&lt;input type="text" name="tel" size="10" valid=":<strong>num,len(10-12)</strong>" /&gt;</code></li>
+  <li>
+    20歳以上のみ許可する<br />
+  <code>&lt;input type="text" name="age" size="4" valid="<strong>1:num,range(20~)</strong>" /></code></li>
+  <li> 
+    同じパスワードを２回入力させる<br />
+    <code>&lt;input type="password" name="password" size="10" valid="<strong>1</strong>" /&gt;<br />
+    &lt;input type="password" name="password_confirm" size="10" valid="<strong>1:sameas(password)</strong>" /&gt;</code>
+  </li>
+  <li>入力エラーのあった項目名を指定<br />
+    <code>&lt;input type=&quot;text&quot; name=&quot;kana&quot; valid=&quot;<strong>1::お名前（フリガナ）</strong>&quot; /&gt;</code><br />
+  このテキストボックスが未入力だった場合の[+errors+]プレースホルダ内容<br />
+  →<code>[お名前（フリガナ）] 入力必須項目です</code></li>
+  <li>GIFとJPEG画像のみアップロードを許可する<br />
+  <code>&lt;input type=&quot;file&quot; name=&quot;picture&quot; valid=&quot;:<strong>allowtype(gif|jpg)</strong>&quot; /&gt;</code></li>
+  <li>アップロード可能最大サイズを100KBにする<br />
+  <code>&lt;input type=&quot;file&quot; name=&quot;photo&quot; valid=&quot;1:<strong>allowsize(100)</strong>&quot; /&gt;</code></li>
+  <li>全角カタカナを全角ひらがなに変換する<br />
+    <code>&lt;input type=&quot;text&quot; name=&quot;kana&quot; valid=&quot;1:<strong>convert(C)</strong>&quot; /&gt;</code>
+  </li>
+</ul>
+<p>以上で挙げた検証の他に、「自動返信」を使用する場合は”自動返信先”（reply_to）がメールアドレスとして正しいかどうかを必ずチェックします。<span class="note">（※v0.0.7以降） </span><br />
+また、これにより自動的にフィールド reply_to が作成されますので、エラーメッセージ表示の際のフィールド名として利用できます。</p>
+<h3>【追加タグ】</h3>
+<p>主にエラーメッセージ表示用に、以下の独自タグをサポートしています。</p>
+<dl>
+  <dt>&lt;iferror&gt;&lt;/iferror&gt;</dt>
+  <dd>エラーが存在する場合にタグ内を表示</dd>
+  <dt>&lt;iferror.フィールド名&gt;&lt;/iferror&gt;</dt>
+  <dd>指定したフィールドにエラーが存在する場合にタグ内を表示<br />
+  （例： <code>&lt;iferror.name&gt;&lt;p class=&quot;error&quot;&gt;氏名を入力してください&lt;/p&gt;&lt;/iferror&gt;</code> ）</dd>
+  <dt>&lt;iferror.(f1,f2[,f3...])&gt;&lt;/iferror&gt;</dt>
+  <dd>f1またはf2（またはf3...。すべてフィールド名）項目にエラーが存在する場合にタグ内を表示<br />
+  （例： <code>&lt;iferror.(name,kana)&gt;&lt;p class=&quot;error&quot;&gt;氏名とふりがなを入力してください&lt;/p&gt;&lt;/iferror&gt;</code> )</dd>
+</dl>
+<h3> 【プレースホルダ】</h3>
+<p>各テンプレート内で使用可能。
+<dl>
+  <dt>[+フィールド名+]</dt>
+  <dd>フィールド名に対応する値</dd>
+  <dt>[+error.フィールド名+] </dt>
+  <dd>指定したフィールドに割り当てられているエラーメッセージ<br />
+    （エラーメッセージが複数割り当てられている場合、&lt;br /&gt;タグで区切って表示。下記「表示フィルタ」を使用して変更することも可能。）</dd>
+</dl>
+<h4>-- システムで予約済みのもの --</h4>
+<dl>
+  <dt>[+errors+]</dt>
+  <dd>全てのエラーを表示（初期値は&lt;br /&gt;区切り。下記「表示フィルタ」で変更可能。）<br />
+  &lt;input&gt;タグや&lt;select&gt;タグに対して適切に&lt;label&gt;タグを使用することで、エラーのあるフィールド名が&lt;label&gt;タグで囲まれた表記で表示されます。
+    <h5>[例]</h5>
+    <p><code>&lt;label <strong>for="name"</strong>&gt;お名前&lt;/label&gt;&lt;input type="text" name="name" valid="1" <strong>id="name"</strong> /&gt;</code><br />
+        → [お名前] 入力必須項目です</p>
+    <p>※v1.0以降、valid属性で指定するlabelのほうが優先されます。<br />
+      <code>&lt;label for=&quot;name&quot;&gt;お名前&lt;/label&gt;&lt;input type=&quot;text&quot; name=&quot;name&quot; <strong>valid=&quot;1::氏名&quot;</strong> id=&quot;name&quot; /&gt;</code><br />
+    →[氏名] 入力必須項目です</p>
+  </dd>
+  <dd>
+    <p>&nbsp;</p>
+  </dd>
+  <dt>[+verimageurl+]</dt>
+  <dd>画像認証コードとして使用する画像の URI</dd>
+</dl>
+<h4>メールテンプレート用（「管理者宛メール」「自動返信メール」テンプレートチャンク内でのみ使用できます）</h4>
+<dl>
+  <dt>[+adminmail+]</dt>
+  <dd>管理者メールアドレス（環境設定の admin_mail と同値）</dd>
+  <dt>[+reply_to+]</dt>
+  <dd>自動返信の宛先メールアドレス</dd>
+  <dt>[+senddate+]</dt>
+  <dd>送信日時（デフォルト書式： Y-m-d H:i:s。下記「表示フィルタ」の dateformat を利用して変更可能。）</dd>
+  <dt>[+sender_ip+]</dt>
+  <dd>送信者のIPアドレス</dd>
+  <dt>[+sender_host+]</dt>
+  <dd>送信者のホスト名（逆引きできない場合は IPアドレス）</dd>
+  <dt>[+sender_ua+]</dt>
+  <dd>送信者のユーザーエージェント</dd>
+</dl>
+
+<h3>【表示フィルタ】</h3>
+<p> 上記プレースホルダの出力に対して任意のフィルターをかけることが可能。
+<h4>[書式] </h4>
+<p> <strong>[+フィールド名|フィルタ名（パラメータ）+] </strong>
+<dl>
+  <dt>フィールド名</dt>
+  <dd>フォームのフィールド名（name="xxx")</dd>
+  <dt>フィルタ名、パラメータ</dt>
+  <dd>適応させるフィルタ名とパラメータ（任意）。標準では以下のフィルタを備えています。
+  <dl>
+    <dt>implode(string)</dt>
+    <dd>string で区切って表示 ※該当フィールドが配列の場合のみ有効。</dd>
+    <dt>implodetag(string)</dt>
+    <dd>値を&lt;string&gt;&lt;/string&gt;タグで囲んで表示 ※該当フィールドが配列の場合のみ有効。</dd>
+		<dt>dateformat(format)</dt>
+    <dd>format に従い日付書式を変換  ※PHP関数 strftime() と同様。</dd>
+		<dt>num</dt>
+    <dd>数字をフォーマット ※PHP関数 number_format() と同様。ただし第2引数以降は未対応。</dd>
+    <dt>sprintf(format)</dt>
+    <dd>整形して表示　※PHP関数 sprintf() と同様。</dd>
+  </dl>
+  </dd>
+</dl>
+<h4> [例]</h4>
+<ul>
+  <li> [+errors+] (フィルタを指定しない場合） <br />
+  →出力：<code> [お名前：]入力必須項目です&lt;br /&gt;[メールアドレス：]メールアドレスの形式が正しくありません&lt;br /&gt;[性別：]入力必須項目です</code></li>
+  <li>[+errors|implode( / )+]<br />
+  →出力：<code> [お名前：]入力必須項目です / [メールアドレス：]メールアドレスの形式が正しくありません / [性別：]入力必須項目です</code></li>
+  <li>&lt;ul&gt;[+errors|implodetag(li)+]&lt;/ul&gt;<br />
+  →出力： <code>&lt;ul&gt;&lt;li&gt;[お名前：]入力必須項目です&lt;/li&gt;&lt;li&gt;[メールアドレス：]メールアドレスの形式が正しくありません&lt;/li&gt;&lt;li&gt;[性別：]入力必須項目です&lt;/li&gt;&lt;/ul&gt;</code></li>
+</ul>
+
+<h3>【検証メソッドの追加】</h3>
+<p>以下の仕様に則った関数を使用して、任意の検証メソッドを追加することができるます。
+<h4>[関数仕様]  </h4>
+<ol>
+  <li>名前が 「_validate_検証名」 となる関数を作成する</li>
+  <li>引数として 2つの値を受け取るようにする。1つ目はユーザが入力した値、2つ目は検証メソッドのパラメータ（カッコ内の数値）</li>
+  <li>これらの引数を基に検証する</li>
+  <li>正しい値の場合は TRUE を、それ以外の場合はエラーメッセージを返値として指定する</li>
+</ol>
+<h4> [登録のやり方]  </h4>
+<p><s>スニペット内の「↓こここら↓」と「↑ここまで↑」の間に以下の構文と上記仕様の関数を追加する。<br />
+  <code>$mf->addValidateMethod('検証名');</code><br />
+※ここで指定する検証名には _validate_ を付けない</s>
+  <br />
+<strong>v1.0以降</strong>では、従来の方法以外に、「関数仕様」に則った関数を/assets/snippets/cfFormMailer/<strong>additionalMethods.inc.php</strong> 内に作成するだけで定義できます。<br /><h4>[例]</h4>
+<pre>
+/* 正しい郵便番号かどうかを検証 */
+function _validate_postcode($data, $param) {
+  return preg_match("/\d{3}\-\d{4}/", $data) ? TRUE : '郵便番号が正しくありません';
+}
+<s>$mf->addValidateMethod('postcode');</s></pre>
+
+<h3>【フィルターの追加】</h3>
+<p>任意の出力整形フィルタを加えることができます。<span class="note">（Smarty みたいな?!）</span><br />
+大まかな流れは、上記「検証メソッドの追加」と同様。</p>
+<h4>[関数仕様]      </h4>
+<ol>
+  <li>名前が「_filter_フィルタ名」 となる関数を作成する</li>
+  <li>引数として 2つの値を受け取るようにする。1つめは整形対象となるテキスト、2つめはフィルタメソッドのパラメータ（カッコ内の数値）</li>
+  <li>これらの引数を基に整形する</li>
+	<li>返値として、整形後の値を返す</li>
+</ol>
+
+<h4> [登録のやり方] </h4>
+<p><s>スニペット内の「↓こここら↓」と「↑ここまで↑」の間に以下の構文と上記仕様の関数を追加する。
+</s>
+<p><s><code>$mf->addFilterMethod('フィルタ名');</code><br />
+※ここで指定するフィルタ名には _filter_ を付けない</s><br />
+<strong>v1.0以降</strong>では、従来の方法以外に、「関数仕様」に則った関数を/assets/snippets/cfFormMailer/<strong>additionalMethods.inc.php</strong> 内に作成するだけで定義できます。</p>
+
+<h3>【自動返信】</h3>
+<p>環境設定チャンク内の <strong>auto_reply</strong> を 1 、<strong>reply_to</strong> にメールアドレスとして使用するフィールド名を指定することで、”管理者”宛のメールのほかにフォーム送信者に対して自動返信を行うことができます。<br />
+  ※1 reply_to で指定したフィールドは正しいメールアドレス形式かどうかをチェックされます。<br />
+※2 reply_to は、1つのフィールド名、または複数のフィールド名を + 記号で繋げて指定します。</p>
+<h4>[例] </h4>
+<p><code>reply_to = email</code> //name="email" のフィールド値を宛先として使用<br />
+  <code>reply_to = email1+@+email2</code> //name="email1"のフィールド値＋アットマーク＋name="email2"のフィールド値を宛先として使用</p>
+
+<h3>【画像認証コード（CAPTCHA)の使用】 <span class="new">NEW in v0.0.5</span></h3>
+<p>v0.0.5 から画像認証コードが利用できるようになっています。<br />
+環境設定チャンク内で CAPTCHA 使用を宣言し（<strong>vericode = 1</strong>）、以下の例のような、src 属性に <strong>[+verimageurl+]</strong> プレースホルダを指定した&lt;img&gt;タグと、検証項目に <strong>vericode</strong> を指定した&lt;input&gt; タグを、入力画面チャンク内に作成します。
+<h4>[例]</h4>
+<p><code>&lt;img src=&quot;<strong>[+verimageurl+]</strong>&quot; alt=&quot;認証コード&quot; /&gt;<br />
+  &lt;input type=&quot;text&quot; name=&quot;veri&quot; <strong>valid=&quot;1:vericode&quot;</strong> /&gt;</code>
+<p class="note">※modx 本体と同じクラスを利用するため、画像として表示される文字列は [ツール]>[グローバル設定]>[詳細設定]タブの「CAPTCHA用ワード」と同様になります。
+
+<h3>【自動返信メールテンプレートの切り替え】 <span class="new">NEW in v1.0</span></h3>
+<p>自動返信メールの宛先がモバイル端末(*1)の場合に、使用するテンプレートを変更することができます。<br />
+使用するテンプレートをチャンクとして作成し、そのチャンク名を環境設定チャンクの「tmpl_mail_reply_mobile」項目に指定します。</p>
+<p>*1: ”モバイル端末”と判別されるメールアドレスは、末尾が以下の場合です。<br />
+docomo.ne.jp / ezweb.ne.jp / softbank.ne.jp / vodafone.ne.jp / disney.ne.jp / pdx.ne.jp / willcom.ne.jp / emnet.ne.jp</p>
+
+<h3>【指定したファイルの添付送信】 <span class="new">NEW in v1.0</span></h3>
+<p>  フォーム送信者への自動返信メール送信の際に、任意のファイルを添付して送信することが出来ます。<br />
+環境設定チャンク内の以下の項目を設定してください。</p>
+<dl>
+  <dt>attach_file</dt>
+  <dd>送信するファイルの絶対パス（例： /var/www/path/to/file/sample.pdf )。半角コンマ区切りで複数のファイルを指定することが出来ます。<br />
+  必ず半角英数字で指定してください。</dd>
+  <dt>attach_file_name</dt>
+  <dd>送信するファイルに付けるファイル名（拡張子まで含む）。省略の場合は「attach_file」のファイル名と同様。<br />
+    attach_fileは半角英数字に限定されるため、日本語名で送信したい場合に使用してください。（例： 資料.pdf など。）
+  </dd>
+</dl>
+
+<a name="#upload" id="upload"></a>
+<h3>【ユーザーがアップロードしたファイルの添付送信】 <span class="new">NEW in v1.0</span></h3>
+<p>&lt;input type=&quot;file&quot; /&gt;でアップロードされたファイルを、管理者宛メールと自動返信メールに添付して送信することができます。<br />
+検証メソッドallowtypeとallowsizeで、アップロードできるファイルを限定することをお勧めします。<br />
+[注意]
+&quot;SAFE MODE Restriction in effect&quot;というエラーが発生する場合は、環境設定チャンクのupload_tmp_pathを1にしてみてください。</p>
+<h4>[プラグインの追加]</h4>
+<p style="color:#f00;">！送信内容確認画面でアップロードされたファイルを表示するには、プラグインの追加が必要です！</p>
+<p>アップロードされたファイルは、送信完了するまでブラウザからはアクセスできない一時ディレクトリに保管されるため、送信内容確認画面で表示するために追加処理が必要となります。<br />
+以下の手順に従って、プラグインcfFileViewをインストールしてください。<br /> 
+※確認画面でアップロードされたファイルを表示させない場合は、インストールする必要はありません。</p>
+<ol>
+  <li>以下の情報で新規プラグインを作成します。<em><br />
+  </em>■プラグイン名： <strong>cfFileView</strong><br />
+  ■プラグインコード： ダウンロードしたcfFormMailerパッケージ内の<strong>plugin.cfFileView.php</strong>ファイルの内容をコピー＆ペースト</li>
+  <li>システムイベントタブをクリックし、<strong>OnPageNotFound</strong>にチェックを入れます。</li>
+</ol>
+<p>以上でインストール完了です。</p>
+<h4>[ファイルの追加]</h4>
+<p style="color:#f00;">！画像アップロードライブラリclass.upload.phpの追加を推奨します！</p>
+<p>アップロードされたファイルのMIMEタイプ判別（と、将来の拡張）のために、Colin Verot氏作の画像アップロードライブラリであるclass.upload.phpを使用することを推奨します。<br />
+一応無くても動作するようにはなっていますが、画像以外のファイルのアップロードを許可する場合は、最適なPHPの動作環境（<a href="http://www.php.net/manual/ja/book.fileinfo.php" target="_blank">Fileinfo関数</a>が利用できること）とともに、このclass.upload.phpを使用するようにしてください。</p>
+<p> 書庫ファイル内には格納しておりませんので、<a href="http://www.verot.net/php_class_upload.htm" target="_blank">class.upload.phpのページ</a>からダウンロードし、/assets/snippets/cfFormMailer/フォルダ内にアップロードしてください。</p>
+<h4>[確認画面でのファイル指定]</h4>
+<p>アップロードされたファイルは、プラグインcfFileViewを利用して表示させますので、&lt;img&gt;タグや&lt;a&gt;タグのURLとして、以下のように記述します。</p>
+<p><strong>cfFileView?field=フィールド名</strong></p>
+<p>画像なら&lt;img&gt;タグのsrc属性、それ以外なら&lt;a&gt;タグのhref属性に指定して別画面で表示させるという方法が良いと思います。<br /> 
+  「テンプレートでの記述例」を参考にしてください。
+</p>
+<h4>[追加されるプレースホルダ]</h4>
+<p>以下のプレースホルダが追加され、「確認画面テンプレート」で使用できます。</p>
+<h5>アップロードされたファイルが画像の場合</h5>
+<dl>
+  <dt>[+フィールド名.imagewidth+]</dt>
+  <dd>アップロードされた画像の幅</dd>
+  <dt>[+フィールド名.imageheight+]</dt>
+  <dd>アップロードされた画像の高さ</dd>
+  <dd></dd>
+  <dt>[+フィールド名.imagename+]</dt>
+  <dd>ファイル名</dd>
+  <dt>[+フィールド名.imagetype+]</dt>
+  <dd>ファイルの形式。以下の何れかとなります。<br />
+    GIF / JPG / PNG / PDF / TXT / HTML / WORD </dd>
+  <dd></dd>
+</dl>
+<h5>アップロードされたファイルが画像以外の場合</h5>
+<dl>
+  <dt>[+フィールド名.filename+]</dt>
+  <dd>ファイル名</dd>
+  <dt>[+フィールド名.filetype+]</dt>
+  <dd>ファイルの形式。以下の何れかとなります。<br />
+    GIF / JPG / PNG / PDF / TXT / HTML / WORD
+  </dd>
+  <dd></dd>
+</dl>
+<h4>[テンプレートでの記述例]</h4>
+<dl>
+  <dt>画像の場合(1)</dt>
+  <dd>入力画面：　<code>&lt;p&gt;写真&lt;input type=&quot;file&quot; name=&quot;pic&quot; valid=&quot;:allowsize(1024)&quot; /&gt;&lt;/p&gt;</code><br />
+  確認画面：　<code>&lt;p&gt;写真： &lt;img src=&quot;<strong>cfFileView?field=pic</strong>&quot; width=&quot;<strong>[+pic.imagewidth+]</strong>&quot; height=&quot;<strong>[+pic.imageheight+]</strong>&quot; alt=&quot;<strong>[+pic.imagename+]</strong>&quot; /&gt;&lt;/p&gt;</code><br />
+  表示例：　　<code>&lt;p&gt;写真： &lt;img src=&quot;cfFileView?field=pic&quot; width=&quot;240&quot; height=&quot;320&quot; alt=&quot;画像です.jpg&quot; /&gt;&lt;/p&gt;</code></dd>
+  <dt>画像の場合(2)</dt>
+  <dd>入力画面：　<code>&lt;p&gt;写真&lt;input type=&quot;file&quot; name=&quot;photo&quot; valid=&quot;:allowtype(gif|jpg)&quot; /&gt;&lt;/p&gt;</code><br />
+  確認画面：　<code>&lt;p&gt;写真： &lt;img src=&quot;<strong>cfFileView?field=photo</strong>&quot; alt=&quot;&quot; width=&quot;100&quot; /&gt;&lt;/p&gt;</code><br />
+  表示例：　　<code>&lt;p&gt;写真： &lt;img src=&quot;cfFileView?field=photo&quot; alt=&quot;&quot; width=&quot;100&quot; /&gt;&lt;/p&gt;</code></dd>
+  <dt>画像以外のファイルの場合</dt>
+  <dd>入力画面：　<code>&lt;p&gt;&lt;input type=&quot;file&quot; name=&quot;profile&quot; valid=&quot;1:allowtype(pdf|txt)&quot; /&gt; PDFまたはテキスト形式のプロフィールをアップロードしてください&lt;/p&gt;</code><br />
+  確認画面：　<code>&lt;p&gt;&lt;a href=&quot;<strong>cfFileView?field=profile</strong>&quot; target=&quot;_blank&quot;&gt;<strong>[+profile.filename+]</strong>&lt;/a&gt; 【<strong>[+profile.filetype+]</strong>形式】&lt;/p&gt;</code><br />
+  表示例：　　<code>&lt;p&gt;&lt;a href=&quot;cfFileView?field=profile&quot; target=&quot;_blank&quot;&gt;○○のプロフィール.pdf&lt;/a&gt; 【PDF形式】&lt;/p&gt; </code></dd>
+</dl>
+<h4>[その他仕様]</h4>
+<p>※アップロードされたファイルは、アップロード時のファイル名（クライアントマシンの元のファイル名）で添付されます。<br />
+※アップロードされたファイルは、メール送信時と、確認画面から入力画面に戻った場合に削除されます。</p>
+<h2 id="c3">■ eFormとの差異</h2>
+<p> 標準で添付されるスニペット eForm と比べて、主に以下の点に対応していません。
+<ul>
+  <li><s>CAPTCHA</s> ---> v0.0.5で対応済み</li>
+  <li><s>ファイル添付</s> ---> v1.0で対応</li>
+	<li><s>HTMLメール</s> ---> v0.0.7で対応済み</li>
+	<li>イベントをトリガーにして何かする</li>
+	<li>ドキュメントをテンプレートとして使用すること</li>
+</ul>
+<p>などなど。</p>
+
+<h2 id="c4">■ バグレポート、お問い合わせ、サポート</h2>
+<p>ブログ「網的脚本実験室」まで<br />
+  <a href="http://www.clefarray-web.net/blog/">http://www.clefarray-web.net/blog/</a>
+<p>または、MODxの公式日本語フォーラムでも受け付けています。
+
+<h2 id="c5"> ■ ご注意、免責事項</h2>
+<p> ※本スクリプトは MODx と同様、GPL ライセンスの元で配布されています。<br />
+※本スクリプトに関してのメール等での個別のお問い合わせはご遠慮ください。<br />
+※本スクリプトの使用によって生じた損害等について、作者は一切の責務を負わない事とさせていただきます。ご了承ください。<br />
+※バージョン1.0以降、動作検証は MODx Evolution 1.0.x 日本語版にて行っています。また文字コードは UTF-8 に限定しております。
+
+<h2 id="c6"> ■ 更新履歴</h2>
+<dl>
+	<dt>2011-04-04 v1.2</dt>
+  <dd>[NEW] cfFormDBとの連携機能追加<br />
+  [NEW] 検証メソッド”url”, ”convert”追加<br />
+  [NEW] 環境設定 use_store_db, send_mail 追加<br />
+  [CHANGE] tel検証メソッドを使用した項目は全角英字・ハイフンも半角に変換（従来は全角数字のみ）<br />
+  [FIX] 長い件名への対応強化</dd>
+  <dt>2010-11-10 v1.1r2</dt>
+  <dd>[FIX] メール送信者名やメール件名が長い場合に不要な文字が挿入されてしまう不具合に対処<br />
+  （ただしWindows版PHPからmail関数でメール送信する設定の場合は正常動作しない可能性があります。）<br />
+  [FIX] ユーザーからのファイルアップロードの際、サーバー環境によって保存がうまくいかない場合に対処 （環境設定 upload_tmp_path 追加）</dd>
+  <dt>2010-05-12 v1.1</dt>
+  <dd>[FIX] 開始タグと閉じタグの間にテキストの無い偶数個目のタグ（&lt;textarea&gt;タグなど）について値の復元が正しく行われない不具合を修正(thanks to trickstarさん）<br />
+    [CHANGE] 
+  同梱のサンプルテンプレートの名称を変更（thanks to yamaさん / 公式フォーラムより）<br />
+  [CHANGE] cfFileViewプラグインを MODx v1.0.3でのプラグインインストール半自動化に対応
+  </dd>
+  <dt>2010-03-06 v1.0</dt>
+	<dd>[NEW] ファイルを添付しての送信に対応。（環境設定 attach_file, attach_file_name追加）<br />
+    [NEW] ユーザーからの画像ファイルアップロードと送信に対応<br />
+    [NEW] 携帯端末宛自動返信メールのテンプレートをPC宛とは独立して設定可能に。（環境設定 tmpl_mail_reply_mobile追加）<br />
+    [NEW] valid属性の3番目のパラメータを[+errors+]表示時の項目名として利用<br />
+    [CHANGE] 独自検証メソッド、独自フィルターメソッドの追加方法を変更（※従来の方法もひとまず使用可能ですが、非推奨）
+    <br />
+    [CHANGE] 環境設定admin_nameの初期値を、「サイト名」から未定義に変更<br />
+    [CHANGE] class.cfFormMailerMODx.inc.phpを廃し、メインクラス内に統合
+    <br />
+    [FIX] メールの件名と送信者名が文字化けする場合がある不具合に対処<br />
+    [FIX] selectタグ、textareaタグへINVALID_CLASSを付加する際に余分なスラッシュを付加してしまう問題を修正<br />
+    [FIX] サンプルテンプレートでのID重複を削除
+  </dd>
+	<dt>2009-09-12 v0.0.7.2</dt>
+  <dd>[FIX] 独自検証メソッド、フィルターメソッド追加に関する不具合を修正<br />
+    [FIX] フォームの各属性の値が大文字で記述されていた場合に、エラー画面で入力値が反映しない不具合を修正<br />
+    [FIX] 空のvalue属性があった場合にタグが崩れる不具合を修正<br />
+    [FIX] 入力画面サンプルチャンクの&lt;form&gt;タグにaction属性を追加
+  </dd>
+  <dt>2007-11-13 v0.0.7.1</dt>
+  <dd>[FIX] 前後にタブを含む&lt;option&gt;タグを正常に処理できない不具合を修正<br />
+    [FIX] 初期選択値（selected="selected")が指定されている場合は削除
+  </dd>
+  <dt>2007-11-04 v0.0.7</dt>
+  <dd>[NEW] HTML メール送信に対応<br />
+    [NEW] 検証メソッド”tel”追加<br />
+    [NEW] 自動返信先となるメールアドレスを任意指定可能に<br />
+    [NEW] [+reply_to+]プレースホルダ追加<br />
+    [CHANGE] 自動返信先として指定したフィールドは必ず、メールアドレス形式として正しいかを検証（→検証メソッド email は付けなくて良いです）<br />
+    [FIX] EUC-JP 環境化でのメール文字化け解消
+  </dd>
+  <dt>2007-10-23（未公開） v0.0.6</dt>
+	<dd>[NEW] [+sender_ip+][+sender_host+][+sender_ua+]プレースホルダ追加<br />
+    [NEW] 管理者宛メールアドレス（admin_mail）に複数のメールアドレスを指定可能に<br />
+    [NEW] 検証メソッド”sameas”追加<br />
+    [NEW] エラーのあるフィールドに任意のクラスセレクタを付加<br />
+    [NEW] admin_ishtml, reply_ishtml, reply_fromname, invalid_class 設定項目を追加<br />
+    [CHANGE] mb_send_mail()関数ではなく MODx 付属の PHPMailer クラスを使用するように変更。送信メールの文字コードは iso-2022-jp。<br />
+    [FIX] 一部の設定項目省略値が反映されない不具合を修正
+  </dd>
+  <dt>2007-10-16（未公開）v0.0.5</dt>
+  <dd>[NEW] CAPTCHA 認証コードに対応<br />
+    [NEW] 検証メソッド”range”追加<br />
+[FIX] 入力値が空(NULL）の場合は確認画面表示時に &amp;nbsp; に変換
+  </dd>
+  <dt>2007-10-09 v0.0.4</dt>
+  <dd>[FIX] [+errors+]が効かない不具合を修正<br />
+    [FIX] システムが付加するフィールドはアンダースコア(_)から始まる名称に変更<br />
+    [NEW] &lt;label&gt;タグに対応<br />
+    [NEW] 入力必須項目のエラーメッセージで、ラジオボタンやリストのときは「選択必須項目です」と表示（他は「入力必須項目です」）
+  </dd>
+  <dt>2007-04-29 v0.0.3（公開初版）</dt>
+</dl>
+
+</body>
+</html>
