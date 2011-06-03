@@ -718,7 +718,7 @@ class Class_cfFormMailer {
    * テンプレートチャンクの読み込み
    *
    * @access private
-   * @param  string $chunk チャンク名
+   * @param  string $chunk チャンク名・またはリソースID
    * @return string 読み込んだデータ
    */
   function loadTemplate($chunk) {
