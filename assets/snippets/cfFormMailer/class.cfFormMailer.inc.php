@@ -722,7 +722,11 @@ class Class_cfFormMailer {
    * @return string 読み込んだデータ
    */
   function loadTemplate($chunk) {
-    $html = ($tmpl = $this->modx->getChunk($chunk)) ? $tmpl : false;
+    if (preg_match('/^[1-9][0-9]*$/',$name)) {
+      $html = ($resource = $this->modx->getDocumentObject('id',$name)) ? $resource['content'] : false; // thanks to yama
+    } else {
+      $html = ($tmpl = $this->modx->getChunk($name)) ? $tmpl : false;
+    }
     if ($html) {
       return $html;
     } else {
