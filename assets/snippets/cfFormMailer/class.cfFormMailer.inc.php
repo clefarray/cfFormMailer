@@ -4,7 +4,7 @@
  * 
  * @author  Clefarray Factory
  * @link  http://www.clefarray-web.net/
- * @version 1.3
+ * @version 1.2
  *
  * Documentation: http://www.clefarray-web.net/blog/manual/cfFormMailer_manual.html
  * LICENSE: GNU General Public License (GPL) (http://www.gnu.org/copyleft/gpl.html)
@@ -45,7 +45,7 @@ class Class_cfFormMailer {
    * バージョン番号
    * @var string
    */
-  var $version = '1.3β';
+  var $version = '1.2';
 
   /** */
   var $lf = "\n";
@@ -716,18 +716,13 @@ class Class_cfFormMailer {
 
   /**
    * テンプレートチャンクの読み込み
-   * (リソースID対応 thanks to @yama）
    *
    * @access private
-   * @param  string $name チャンク名・またはリソースID
+   * @param  string $chunk チャンク名
    * @return string 読み込んだデータ
    */
-  function loadTemplate($name) {
-    if (preg_match('/^[1-9][0-9]*$/', $name)) {
-      $html = ($resource = $this->modx->getDocumentObject('id', $name)) ? $resource['content'] : false;
-    } else {
-      $html = ($tmpl = $this->modx->getChunk($name)) ? $tmpl : false;
-    }
+  function loadTemplate($chunk) {
+    $html = ($tmpl = $this->modx->getChunk($chunk)) ? $tmpl : false;
     if ($html) {
       return $html;
     } else {
