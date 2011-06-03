@@ -721,9 +721,9 @@ class Class_cfFormMailer {
    * @param  string $chunk チャンク名・またはリソースID
    * @return string 読み込んだデータ
    */
-  function loadTemplate($chunk) {
-    if (preg_match('/^[1-9][0-9]*$/',$name)) {
-      $html = ($resource = $this->modx->getDocumentObject('id',$name)) ? $resource['content'] : false; // thanks to yama
+  function loadTemplate($name) {
+    if (preg_match('/^[1-9][0-9]*$/', $name)) {
+      $html = ($resource = $this->modx->getDocumentObject('id', $name)) ? $resource['content'] : false; // thanks to yama
     } else {
       $html = ($tmpl = $this->modx->getChunk($name)) ? $tmpl : false;
     }
