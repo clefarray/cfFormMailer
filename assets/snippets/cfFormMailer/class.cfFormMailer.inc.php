@@ -736,6 +736,7 @@ class Class_cfFormMailer {
       $html = ($tmpl = $this->modx->getChunk($name)) ? $tmpl : false;
     }
     if ($html) {
+      $html = $this->modx->parseDocumentSource($html);
       return $html;
     } else {
       $this->setError('Chunk read error');
