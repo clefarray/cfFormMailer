@@ -460,6 +460,7 @@ class Class_cfFormMailer {
       $pm->FromName = '';
     }
     $pm->From = ($reply_to ? $reply_to : ADMIN_MAIL);
+    $pm->Sender = $pm->From;
     $pm->Body = mb_convert_encoding($tmpl, $mailCharset, CHARSET);
     $pm->Encoding = '7bit';
     // ユーザーからのファイル送信
@@ -492,6 +493,7 @@ class Class_cfFormMailer {
       $pm->Subject = $this->_encodeMimeHeader($subject, $mailCharset);
       $pm->FromName = $this->_encodeMimeHeader(REPLY_FROMNAME, $mailCharset, false);
       $pm->From = REPLY_FROM;
+      $pm->Sender = REPLY_FROM;
       $pm->Body = mb_convert_encoding($tmpl_u, $mailCharset, CHARSET);
       $pm->Encoding = '7bit';
       // 添付ファイル処理
