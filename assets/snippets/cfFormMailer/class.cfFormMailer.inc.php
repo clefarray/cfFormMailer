@@ -826,7 +826,11 @@ class Class_cfFormMailer {
    * @return string 認証コード画像の URI
    */
   function getCaptchaUri() {
-    return $this->modx->config['base_url'] . 'manager/includes/veriword.php?tmp=' . rand();
+    if(is_file($this->modx->config['base_path'] . 'captcha.php'))
+      $captchalib = 'captcha.php';
+    else
+      $captchalib = 'manager/includes/veriword.php?tmp=' . mt_rand();
+    return $this->modx->config['base_url']  . $captchalib;
   }
 
   /**
