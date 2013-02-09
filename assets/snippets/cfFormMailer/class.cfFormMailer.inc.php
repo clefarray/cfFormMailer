@@ -460,6 +460,7 @@ class Class_cfFormMailer {
       $pm->FromName = '';
     }
     $pm->From = ($reply_to ? $reply_to : ADMIN_MAIL);
+    $pm->Sender = $pm->From;
     $pm->Body = mb_convert_encoding($tmpl, $mailCharset, CHARSET);
     $pm->Encoding = '7bit';
     // ユーザーからのファイル送信
@@ -473,7 +474,11 @@ class Class_cfFormMailer {
       }
     }
     if ($pm->Send() == false) {
-      $this->setError('メール送信に失敗しました::' . $pm->ErrorInfo);var_dump($pm);
+      $errormsg = 'メール送信に失敗しました::' . $pm->ErrorInfo;
+      $this->setError($errormsg);// var_dump($pm);
+      $vars = var_export($pm,true);
+      $vars = nl2br(htmlspecialchars($vars));
+      $this->modx->logEvent(1, 3,$errormsg.$vars);
       return false;
     }
 
@@ -488,6 +493,7 @@ class Class_cfFormMailer {
       $pm->Subject = $this->_encodeMimeHeader($subject, $mailCharset);
       $pm->FromName = $this->_encodeMimeHeader(REPLY_FROMNAME, $mailCharset, false);
       $pm->From = REPLY_FROM;
+      $pm->Sender = REPLY_FROM;
       $pm->Body = mb_convert_encoding($tmpl_u, $mailCharset, CHARSET);
       $pm->Encoding = '7bit';
       // 添付ファイル処理
@@ -519,7 +525,11 @@ class Class_cfFormMailer {
       }
 
       if (!$send_flag) {
-        $this->setError('自動返信メール送信に失敗しました::' . $pm->ErrorInfo);
+        $errormsg = 'メール送信に失敗しました::' . $pm->ErrorInfo;
+        $this->setError($errormsg);
+        $vars = var_export($pm,true);
+        $vars = nl2br(htmlspecialchars($vars));
+        $this->modx->logEvent(1, 3,$errormsg.$vars);
         return false;
       }
     }
@@ -728,6 +738,7 @@ class Class_cfFormMailer {
       $html = ($tmpl = $this->modx->getChunk($name)) ? $tmpl : false;
     }
     if ($html) {
+      $html = $this->modx->parseDocumentSource($html);
       return $html;
     } else {
       $this->setError('Chunk read error');
@@ -815,7 +826,11 @@ class Class_cfFormMailer {
    * @return string 認証コード画像の URI
    */
   function getCaptchaUri() {
-    return $this->modx->config['base_url'] . 'manager/includes/veriword.php?tmp=' . rand();
+    if(is_file($this->modx->config['base_path'] . 'captcha.php'))
+      $captchalib = 'captcha.php';
+    else
+      $captchalib = 'manager/includes/veriword.php?tmp=' . mt_rand();
+    return $this->modx->config['base_url']  . $captchalib;
   }
 
   /**
