@@ -2,7 +2,7 @@
 <html xmlns="http://www.w3.org/1999/xhtml">
 <head>
 <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
-<title>cfFormMailerマニュアル v1.1r2</title>
+<title>cfFormMailerマニュアル v1.3</title>
 <style type="text/css">
 body { line-height: 140%;}
 li { margin-bottom: 5px;}
@@ -26,7 +26,7 @@ strong { font-size: large;}
 
 <body>
 <h1>cfFormMailerマニュアル</h1>
-<p id="version"><strong>v1.2</strong></p>
+<p id="version"><strong>v1.3</strong></p>
 <ul>
   <li><a href="#c1">設置＆使用方法</a></li>
   <li><a href="#c2">機能解説</a></li>
@@ -88,6 +88,15 @@ strong { font-size: large;}
   <dd>管理者宛に送信されるメールがHTMLメールかどうかを指定します。<br />
     [設定値] 0・・・テキストメール / 1・・・HTMLメール<br />
   [デフォルト] 0</dd>
+  <dt>管理者宛CCメール送信先 [admin_cc] <span class="new">NEW in v1.3</span></dt>
+  <dd>管理者宛メールと同時にCCで送るアドレスを指定します。半角コンマ区切りで複数のアドレスを指定できます。<br />
+    [設定例] admin_cc = test@example.com,info@example.jp</dd>
+  <dt>管理者宛BCCメール送信先 [admin_bcc] <span class="new">NEW in v1.3</span></dt>
+  <dd>管理者宛メールと同時にBCCで送るアドレスを指定します。半角コンマ区切りで複数のアドレスを指定できます。<br />
+    [設定例] admin_bcc = test@example.com,info@example.jp</dd>
+  <dt>管理者アドレスの動的変更 [dynamic_send_to_field] <span class="new">NEW in v1.3</span></dt>
+  <dd>フォーム中の特定項目の選択肢によって管理者メールアドレスを動的に変更する場合に、その項目名を指定します。<br />
+    「<a href="#dynamic_send_to_field">管理者アドレスの動的変更</a>」参照。</dd>
 </dl>
 <h4>自動返信メール関連</h4>
 <dl>
@@ -132,27 +141,38 @@ strong { font-size: large;}
   [設定例]
   attach_file_name = 募集要項.pdf,エントリーシート.doc</dd>
 </dl>
-<h4>テンプレート関連</h4>
+<h4>テンプレート関連 <span class="new">UPDATE in v1.3</span></h4>
 <dl>
-  <dt>入力画面テンプレート [tmpl_input]</dt>
-  <dd>入力画面のテンプレートとして使用するチャンク名を指定します。<br />
-  [設定例] tmpl_input = tmpl_input</dd>
+  <dt>入力画面テンプレート [tmpl_input] </dt>
+  <dd>入力画面のテンプレートとして使用するチャンク名またはリソースIDを指定します。<br />
+  [設定例] tmpl_input = tmpl_input (※チャンクを指定する場合）<br />
+  &nbsp;　　　&nbsp; tmpl_comp = 11 (※リソースを指定する場合）</dd>
   <dt>確認画面テンプレート [tmpl_conf]</dt>
-  <dd>送信内容確認画面テンプレートとして使用するチャンク名を指定します。<br />
-  [設定例] tmpl_conf = tmpl_conf</dd>
+  <dd>送信内容確認画面テンプレートとして使用するチャンク名またはリソースIDを指定します。<br />
+  [設定例] tmpl_conf = tmpl_conf (※チャンクを指定する場合）<br />
+  &nbsp;　　　&nbsp; tmpl_comp = 12 (※リソースを指定する場合）</dd>
   <dt>完了画面テンプレート [tmpl_comp]</dt>
-  <dd>送信完了画面テンプレートとして使用するチャンク名を指定します。<br />
-  [設定例] tmpl_comp = tmpl_comp</dd>
+  <dd>送信完了画面テンプレートとして使用するチャンク名またはリソースIDを指定します。<br />
+  [設定例] tmpl_comp = tmpl_comp (※チャンクを指定する場合）<br />
+  &nbsp;　　　&nbsp; tmpl_comp = 13 (※リソースを指定する場合）</dd>
   <dt>管理者宛メールテンプレート [tmpl_mail_admin]</dt>
-  <dd>管理者宛メールのテンプレートとして使用するチャンク名を指定します。<br />
-  [設定例] tmpl_mail_admin = tmpl_mail_admin</dd>
+  <dd>管理者宛メールのテンプレートとして使用するチャンク名またはリソースIDを指定します。<br />
+  [設定例] tmpl_mail_admin = tmpl_mail_admin (※チャンクを指定する場合）<br />
+  &nbsp;　　　&nbsp; tmpl_comp = 14 (※リソースを指定する場合）</dd>  
   <dt>自動返信メールテンプレート [tmpl_mail_reply]</dt>
   <dd>自動返信メールのテンプレートとして使用するチャンク名を指定します。<br />
-  [設定例] tmpl_mail_reply = tmpl_mail_reply</dd>
-  <dt>自動返信メールテンプレート（モバイル用） [tmpl_mail_reply_mobile] <span class="new">NEW in v1.0</span></dt>
+  [設定例] tmpl_mail_reply = tmpl_mail_reply (※チャンクを指定する場合）<br />
+  &nbsp;　　　&nbsp; tmpl_comp = 15 (※リソースを指定する場合）</dd>
+  <dt>自動返信メールテンプレート（モバイル用） [tmpl_mail_reply_mobile]</dt>
   <dd>モバイル宛自動返信メールのテンプレートとして使用するチャンク名を指定します。<br />
   モバイル宛テンプレートを使用しない場合は空欄にしてください。<br />
-  [設定例] tmpl_mail_reply_mobile = tmpl_mail_reply_mobile</dd>
+  [設定例] tmpl_mail_reply_mobile = tmpl_mail_reply_mobile (※チャンクを指定する場合）<br />
+  &nbsp;　　　&nbsp; tmpl_comp = 16 (※リソースを指定する場合）</dd></dd>
+  <dt>送信後遷移する完了画面リソースIDまたはURL [complete_redirect] <span class="new">NEW in v1.3</span></dt>
+  <dd>送信完了と同時に完了画面（入力・確認画面とは違うURL）へ遷移するようにします。「完了画面テンプレート(tmpl_comp)」の指定より優先されます。<br />
+    リソースIDまたはURLを指定してください。<br />
+    [設定例] complete_redirect = 17 (※リソースIDで指定する場合）<br />
+    &nbsp;　　　&nbsp; complete_redirect = http://www.example.com/thanks.html （※URLで指定する場合）</dd>
 </dl>
 <h4>その他の設定</h4>
 <dl>
@@ -177,7 +197,7 @@ strong { font-size: large;}
     [設定値] 0･･･サーバデフォルトのテンポラリエリア / 1･･･スニペットディレクトリ内のtmpディレクトリ<br />
     [デフォルト] 0
   </dd>
-  <dt>改行スタイル[LF_style] <span class="new">NEW in v1.1r2</span></dt>
+  <dt>改行スタイル[lf_style] <span class="new">NEW in v1.1r2</span></dt>
   <dd>送信するメールのヘッダに使われる改行コード。通常は変更しなくても大丈夫だと思います。<br />
     [設定値] 0･･･\n (linuxスタイル) / 1･･･\r\n (windowsスタイル)<br />
     [デフォルト] 0
@@ -192,10 +212,16 @@ strong { font-size: large;}
   <dd>メールを送信するかどうかを指定します。0を指定すると、管理者宛、自動送信宛ともに送信しなくなります。<br />
   [設定値] 0･･･送信しない / 1･･･送信する<br />
   [デフォルト] 1</dd>
+  <dt>送信するメールの文字コード [mail_charset] <span class="new">NEW in v1.3</span></dt>
+  <dd>送信されるメールの文字コードを指定します。<br />
+    v1.2までは日本語メール送信における一般的な設定値である「ISO-2022-JP」に固定していましたが、unicodeの文字をそのまま送信したい場合（例：機種依存文字など）のために指定できるようにしました。<br />
+    設定値は、一般的には iso-2022-jp または utf-8 を指定します。<br />
+    [設定例] mail_charset = utf-8<br />
+    [デフォルト] iso-2022-jp</dd>
 </dl>
 <h3>【テンプレートの作成 】</h3>
-<p>入力・確認・完了の各画面や、送信されるメールのテンプレートは、すべてチャンクによって管理されます。<br />
-各チャンク名はデフォルトで名称が指定されていますが、これらは環境設定チャンク内で変更できます。<br />
+<p>入力・確認・完了の各画面や、送信されるメールのテンプレートは、チャンクまたはリソースによって管理されます。<br />
+各画面のテンプレートとなるチャンク名はあらかじめ設定されていますが、これらは環境設定チャンク内で変更できます。<br />
 パッケージのchunk_sampleフォルダ内に各チャンクのサンプルコードがありますので、参考にしてみて下さい。</p>
 <ol>
   <li>「入力画面」テンプレートの作成<br />
@@ -222,6 +248,10 @@ strong { font-size: large;}
 </ol>
 
 <h3>【旧バージョンからのバージョンアップ】</h3>
+<p>【v1.2からのバージョンアップ】<br />
+  assets/snippets/cfFormMailer/class.cfFormMailer.inc.phpのみ差し替えます。<br />
+  必要に応じて、v1.3以降新たに追加された環境設定項目を環境設定チャンクに追加、設定します。<br />
+</p>
 <p>【v1.0/v1.1からのバージョンアップ】<br />
   assets/snippets/cfFormMailer/フォルダ 内のすべてのファイルを置き換えます。<br />
   必要に応じて、新たに追加された環境設定項目を環境設定チャンクに追加、設定します。<br />
@@ -561,6 +591,39 @@ docomo.ne.jp / ezweb.ne.jp / softbank.ne.jp / vodafone.ne.jp / disney.ne.jp / pd
 <h4>[その他仕様]</h4>
 <p>※アップロードされたファイルは、アップロード時のファイル名（クライアントマシンの元のファイル名）で添付されます。<br />
 ※アップロードされたファイルは、メール送信時と、確認画面から入力画面に戻った場合に削除されます。</p>
+
+<h3 id="dynamic_send_to_field">【管理者アドレスの動的変更】 <span class="new">NEW in v1.3</span></h3>
+<p>フォーム中の特定項目の選択内容によって、管理者メールアドレスとなるメールアドレスを変化させることができます。<br />
+例えば「問い合わせ内容」として「1. 製品について」「2. サイトについて」「3. 求人について」「4. その他」という項目を設置した場合に、「1. 製品について」を選択した場合はproduct@example.com宛、「3. 求人について」を選択した場合はrecruit@example.com宛に送信する、といった設定を行うことができます。</p>
+<p>例）問い合わせ内容：<select name=""><option>1. 製品について</option><option>2. サイトについて</option><option>3. 求人について</option><option>4. その他</option></select></p>
+<h4>[設定ファイルでの指定方法]</h4>
+<p>dynamic_send_to_field = 選択によってメール送信先を変更するフィールド名<br />
+例） dynamic_send_to_field = type</p>
+<p>対象となるフィールドは&lt;select&gt;または&lt;input type=&quot;radio&quot;〜 /&gt;である必要があります。</p>
+<h4>[テンプレートでの記述例]</h4>
+<p>入力画面テンプレート内の、「dynamic_send_to_field」で指定したフィールドの各選択肢に「<strong>sendto</strong>」属性を追加します。</p>
+<p>例）　セレクトリストの場合：<br /><code>
+&lt;p&gt;お問い合わせ内容<br />
+&lt;select name=&quot;type&quot;&gt;<br />
+&nbsp;&nbsp;&lt;option value=&quot;1. 製品について&quot; <strong>sendto=&quot;product@example.com&quot;</strong>&gt;1. 製品について&lt;/option&gt;<br />
+&nbsp;&nbsp;&lt;option value=&quot;2. サイトについて&quot; <strong>sendto=&quot;info@example.com&quot;</strong>&gt;2. サイトについて&lt;/option&gt;<br />
+&nbsp;&nbsp;&lt;option value=&quot;3. 求人について&quot; <strong>sendto=&quot;recruit@example.com&quot;</strong>&gt;3. 求人について&lt;/option&gt;<br />
+&nbsp;&nbsp;&lt;option value=&quot;4. その他&quot; <strong>sendto=&quot;info@example.com&quot;</strong>&gt;4. その他&lt;/option&gt;<br />
+&lt;/select&gt;<br />
+&lt;/p&gt;
+</code>
+</p>
+<p>例）　ラジオボタンの場合：<br /><code>
+&lt;p&gt;お問い合わせ内容<br />
+&nbsp;&nbsp;&lt;input type=&quot;radio&quot; value=&quot;1. 製品について&quot; <strong>sendto=&quot;product@example.com&quot;</strong> /&gt;1. 製品について<br />
+&nbsp;&nbsp;&lt;input type=&quot;radio&quot; value=&quot;2. サイトについて&quot; <strong>sendto=&quot;info@example.com&quot;</strong> /&gt;2. サイトについて<br />
+&nbsp;&nbsp;&lt;input type=&quot;radio&quot; value=&quot;3. 求人について&quot; <strong>sendto=&quot;recruit@example.com&quot;</strong> /&gt;3. 求人について<br />
+&nbsp;&nbsp;&lt;input type=&quot;radio&quot; value=&quot;4. その他&quot; <strong>sendto=&quot;info@example.com&quot;</strong> /&gt;4. その他<br />
+&lt;/p&gt;
+</code>
+</p>
+
+
 <h2 id="c3">■ eFormとの差異</h2>
 <p> 標準で添付されるスニペット eForm と比べて、主に以下の点に対応していません。
 <ul>
@@ -568,7 +631,7 @@ docomo.ne.jp / ezweb.ne.jp / softbank.ne.jp / vodafone.ne.jp / disney.ne.jp / pd
   <li><s>ファイル添付</s> ---> v1.0で対応</li>
 	<li><s>HTMLメール</s> ---> v0.0.7で対応済み</li>
 	<li>イベントをトリガーにして何かする</li>
-	<li>ドキュメントをテンプレートとして使用すること</li>
+	<li><s>ドキュメントをテンプレートとして使用すること</s> ---> v1.3(およびv1.2以上でyama氏による修正を適用済みの版）で対応済み</li>
 </ul>
 <p>などなど。</p>
 
@@ -585,6 +648,12 @@ docomo.ne.jp / ezweb.ne.jp / softbank.ne.jp / vodafone.ne.jp / disney.ne.jp / pd
 
 <h2 id="c6"> ■ 更新履歴</h2>
 <dl>
+  <dt>2013-05-23 v1.3</dt>
+  <dd>[NEW] 管理者メールのCC, BCC送信　（admin_mail_cc, admin_mail_bcc)<br />
+    [NEW] メール送信文字コードの指定 (mail_charset)<br />
+    [NEW] 送信後遷移する完了画面を指定可能に（complete_redirect)<br />
+    [NEW] 選択肢による管理者メール送信先の動的変更 (dynamic_send_to_field )<br />
+    [CHANGE] 設定チャンクサンプルconfig_chunk.txtでの「reply_to」「use_store_db」「vericode」の初期値変更</dd>
 	<dt>2011-04-04 v1.2</dt>
   <dd>[NEW] cfFormDBとの連携機能追加<br />
   [NEW] 検証メソッド”url”, ”convert”追加<br />

@@ -4,7 +4,7 @@
  * 
  * @author  Clefarray Factory
  * @link  http://www.clefarray-web.net/
- * @version 1.2
+ * @version 1.3
  *
  * Documentation: http://www.clefarray-web.net/blog/manual/cfFormMailer_manual.html
  * LICENSE: GNU General Public License (GPL) (http://www.gnu.org/copyleft/gpl.html)
@@ -42,10 +42,16 @@ class Class_cfFormMailer {
   var $parsedForm;
   
   /**
+   * 送信先動的変更のための送信先情報
+   * @var array
+   */
+  var $dynamic_send_to = array();
+  
+  /**
    * バージョン番号
    * @var string
    */
-  var $version = '1.2';
+  var $version = '1.3';
 
   /** */
   var $lf = "\n";
@@ -95,6 +101,13 @@ class Class_cfFormMailer {
         $html = $this->loadTemplate(TMPL_CONF);
         break;
       case "comp":
+        if (defined('COMPLETE_REDIRECT') && COMPLETE_REDIRECT) {
+          if (preg_match("/^[1-9][0-9]*$/", COMPLETE_REDIRECT)) {
+            $this->modx->sendRedirect($this->modx->makeUrl(COMPLETE_REDIRECT));
+          } elseif (preg_match("/^https?:\/\//i", COMPLETE_REDIRECT)) {
+            $this->modx->sendRedirect(COMPLETE_REDIRECT);
+          }
+        }
         $html = $this->loadTemplate(TMPL_COMP);
         break;
       default:
@@ -120,6 +133,8 @@ class Class_cfFormMailer {
         
         // 検証フィールドを削除
         $html = preg_replace("/\svalid=([\"\']).+?\\1/i", "", $html);
+        // 送信先情報を削除
+        $html = preg_replace("/\ssendto=([\"\']).+?\\1/i", "", $html);
         
         // エラーの場合は入力値とエラーメッセージを付記
         if ($mode == 'error') {
@@ -277,7 +292,7 @@ class Class_cfFormMailer {
         $this->setFormError('reply_to', 'メールアドレス', '形式が正しくありません');
       }
     }
-    
+
     return (!count($this->formError));
   }
 
@@ -388,16 +403,35 @@ class Class_cfFormMailer {
       $this->setError('フォームが取得できません');return false;
     }
     // 送信メールの文字コード
-    $mailCharset = 'iso-2022-jp'; // 決めうち:-)
+    if (defined('MAIL_CHARSET') && MAIL_CHARSET) {
+      $mailCharset = MAIL_CHARSET;
+    } else {
+      $mailCharset = 'iso-2022-jp';
+    }
     
     mb_language('ja');
     mb_internal_encoding(CHARSET);
     
+    // 管理者メールアドレス特定
+    $admin_addresses = array();
+    if (defined('DYNAMIC_SEND_TO_FIELD') && DYNAMIC_SEND_TO_FIELD && count($this->dynamic_send_to)) {
+        if ($this->form[DYNAMIC_SEND_TO_FIELD]) {
+          $mails = explode(",", $this->dynamic_send_to[$this->form[DYNAMIC_SEND_TO_FIELD]]);
+        }
+    } else {
+      $mails = explode(",", ADMIN_MAIL);
+    }
+    foreach ($mails as $buf) {
+      $buf = trim($buf);
+      if ($this->_isValidEmail($buf)) {
+        $admin_addresses[] = $buf;
+      }
+    }
+    
     // 本文の準備
-    $admin_addresses = explode(",", ADMIN_MAIL);
     $additional = array(
       'senddate'    => date("Y-m-d H:i:s"),
-      'adminmail'   => trim($admin_addresses[0]),
+      'adminmail'   => $admin_addresses[0],
       // Added in v0.0.6
       'sender_ip'   => $_SERVER['REMOTE_ADDR'],
       'sender_host' => gethostbyaddr($_SERVER['REMOTE_ADDR']),
@@ -448,8 +482,22 @@ class Class_cfFormMailer {
     $pm->IsHTML(ADMIN_ISHTML);
     $pm->CharSet = $mailCharset;
     foreach ($admin_addresses as $v) {
-      if ($this->_isValidEmail($v)) {
-        $pm->AddAddress(trim($v));
+        $pm->AddAddress($v);
+    }
+    if (defined('ADMIN_MAIL_CC') && ADMIN_MAIL_CC) {
+      foreach (explode(",", ADMIN_MAIL_CC) as $v) {
+        $v = trim($v);
+        if ($this->_isValidEmail($v)) {
+          $pm->AddCC($v);
+        }
+      }
+    }
+    if (defined('ADMIN_MAIL_BCC') && ADMIN_MAIL_BCC) {
+      foreach (explode(",", ADMIN_MAIL_BCC) as $v) {
+        $v = trim($v);
+        if ($this->_isValidEmail($v)) {
+          $pm->AddBCC($v);
+        }
       }
     }
     $subject = (ADMIN_SUBJECT) ? ADMIN_SUBJECT : "サイトから送信されたメール";
@@ -475,7 +523,7 @@ class Class_cfFormMailer {
     }
     if ($pm->Send() == false) {
       $errormsg = 'メール送信に失敗しました::' . $pm->ErrorInfo;
-      $this->setError($errormsg);// var_dump($pm);
+      $this->setError($errormsg);
       $vars = var_export($pm,true);
       $vars = nl2br(htmlspecialchars($vars));
       $this->modx->logEvent(1, 3,$errormsg.$vars);
@@ -484,6 +532,7 @@ class Class_cfFormMailer {
 
     // 自動返信
     if (AUTO_REPLY && $reply_to) {
+      $reply_from = defined("REPLY_FROM") && REPLY_FROM ? REPLY_FROM : $admin_addresses[0];
       $pm = new PHPMailer_EX();
       $pm->IsMail();
       $pm->IsHTML(REPLY_ISHTML);
@@ -492,8 +541,8 @@ class Class_cfFormMailer {
       $subject = (REPLY_SUBJECT) ? REPLY_SUBJECT : "自動返信メール";
       $pm->Subject = $this->_encodeMimeHeader($subject, $mailCharset);
       $pm->FromName = $this->_encodeMimeHeader(REPLY_FROMNAME, $mailCharset, false);
-      $pm->From = REPLY_FROM;
-      $pm->Sender = REPLY_FROM;
+      $pm->From = $reply_from;
+      $pm->Sender = $reply_from;
       $pm->Body = mb_convert_encoding($tmpl_u, $mailCharset, CHARSET);
       $pm->Encoding = '7bit';
       // 添付ファイル処理
@@ -549,7 +598,7 @@ class Class_cfFormMailer {
     while ($pos < mb_strlen($text, CHARSET)) {
       $output = mb_strimwidth($text, $pos, $split, "", CHARSET);
       $pos += mb_strlen($output, CHARSET);
-      $_string .= (($_string) && $flag ? "\r\n" . " " : (!$flag ? " " : "")) . "=?{$encode}?B?" . base64_encode(mb_convert_encoding($output, $encode, CHARSET)) . '?=';
+      $_string .= (($_string) && $flag ? $this->lf . " " : (!$flag ? " " : "")) . "=?{$encode}?B?" . base64_encode(mb_convert_encoding($output, $encode, CHARSET)) . '?=';
     }
     return $_string;
   }
@@ -938,6 +987,28 @@ class Class_cfFormMailer {
       }
     }
     $this->parsedForm = $methods;
+    
+    // 送信先動的変更のためのデータ取得(from v1.3)
+    if (defined('DYNAMIC_SEND_TO_FIELD') && DYNAMIC_SEND_TO_FIELD && isset($methods[DYNAMIC_SEND_TO_FIELD])) {
+      $m_options = array();
+      if ($methods[DYNAMIC_SEND_TO_FIELD]['type'] == 'select') {
+        preg_match("/<select.*?name=(\"|\')" . DYNAMIC_SEND_TO_FIELD . "\\1.*?>(.+?)<\/select>/ims", $html, $matches);
+        if ($matches[2]) {
+          preg_match_all("/<option.+?<\/option>/ims", $matches[2], $m_options);
+        }
+      } elseif ($methods[DYNAMIC_SEND_TO_FIELD]['type'] == 'radio') {
+        preg_match_all("/<input.*?name=(\"|\')" . DYNAMIC_SEND_TO_FIELD . "\\1.*?>/im", $html, $m_options);
+      }
+      if ($m_options[0] && count($m_options[0])) {
+        foreach ($m_options[0] as $m_option) {
+          preg_match_all("/(value|sendto)=(\"|\')(.+?)\\2/i", $m_option, $buf, PREG_SET_ORDER);
+          if ($buf && count($buf) == 2) {
+            $key_value = ($buf[0][1] == 'value') ? $buf[0][3] : $buf[1][3];
+            $this->dynamic_send_to[$key_value] = ($buf[0][1] == 'value') ? $buf[1][3] : $buf[0][3];
+          }
+        }
+      }
+    }
     return true;
   }
 
@@ -1158,7 +1229,7 @@ class Class_cfFormMailer {
     $err = array();
     if (empty($param_list['tmpl_input'])) $err[] = '`入力画面テンプレート`を指定してください';
     if (empty($param_list['tmpl_conf'])) $err[] = '`確認画面テンプレート`を指定してください';
-    if (empty($param_list['tmpl_comp'])) $err[] = '`完了画面テンプレート`を指定してください';
+    if (empty($param_list['tmpl_comp']) && empty($param_list['complete_redirect'])) $err[] = '`完了画面テンプレート`または`送信後遷移する完了画面リソースID`を指定してください';
     if (empty($param_list['tmpl_mail_admin'])) $err[] = '`管理者宛メールテンプレート`を指定してください';
     if ($param_list['auto_reply'] && empty($param_list['tmpl_mail_reply'])) $err[] = '`自動返信メールテンプレート`を指定してください';
     if (count($err)) {
@@ -1170,10 +1241,6 @@ class Class_cfFormMailer {
     //if (empty($param_list['admin_name'])) $param_list['admin_name'] = $this->modx->config['site_name']; // 仕様変更 in v1.0
     if (empty($param_list['auto_reply']))   $param_list['auto_reply']   = 0;
     if (empty($param_list['reply_to']))   $param_list['reply_to']   = 'email';
-    if (empty($param_list['reply_from'])) {
-      $admin_addresses = explode(",", $param_list['admin_mail']);
-      $param_list['reply_from'] = trim($admin_addresses[0]);
-    }
     if (empty($param_list['reply_fromname'])) $param_list['reply_fromname'] = $this->modx->config['site_name'];
     // Added in v0.0.5
     if (empty($param_list['vericode'])) $param_list['vericode'] = 0;
