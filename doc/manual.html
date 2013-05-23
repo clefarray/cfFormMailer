@@ -602,9 +602,9 @@ docomo.ne.jp / ezweb.ne.jp / softbank.ne.jp / vodafone.ne.jp / disney.ne.jp / pd
 <p>対象となるフィールドは&lt;select&gt;または&lt;input type=&quot;radio&quot;〜 /&gt;である必要があります。</p>
 <h4>[テンプレートでの記述例]</h4>
 <p>入力画面テンプレート内の、「dynamic_send_to_field」で指定したフィールドの各選択肢に「<strong>sendto</strong>」属性を追加します。</p>
-<p>例）　セレクトリストの場合：<br /><code>
+<p>例）　dynamic_send_to_field = type と設定した場合のセレクトリストの場合：<br /><code>
 &lt;p&gt;お問い合わせ内容<br />
-&lt;select name=&quot;type&quot;&gt;<br />
+&lt;select name=&quot;<strong>type</strong>&quot;&gt;<br />
 &nbsp;&nbsp;&lt;option value=&quot;1. 製品について&quot; <strong>sendto=&quot;product@example.com&quot;</strong>&gt;1. 製品について&lt;/option&gt;<br />
 &nbsp;&nbsp;&lt;option value=&quot;2. サイトについて&quot; <strong>sendto=&quot;info@example.com&quot;</strong>&gt;2. サイトについて&lt;/option&gt;<br />
 &nbsp;&nbsp;&lt;option value=&quot;3. 求人について&quot; <strong>sendto=&quot;recruit@example.com&quot;</strong>&gt;3. 求人について&lt;/option&gt;<br />
@@ -613,12 +613,12 @@ docomo.ne.jp / ezweb.ne.jp / softbank.ne.jp / vodafone.ne.jp / disney.ne.jp / pd
 &lt;/p&gt;
 </code>
 </p>
-<p>例）　ラジオボタンの場合：<br /><code>
+<p>例）　dynamic_send_to_field = type と設定した場合のラジオボタンの例：<br /><code>
 &lt;p&gt;お問い合わせ内容<br />
-&nbsp;&nbsp;&lt;input type=&quot;radio&quot; value=&quot;1. 製品について&quot; <strong>sendto=&quot;product@example.com&quot;</strong> /&gt;1. 製品について<br />
-&nbsp;&nbsp;&lt;input type=&quot;radio&quot; value=&quot;2. サイトについて&quot; <strong>sendto=&quot;info@example.com&quot;</strong> /&gt;2. サイトについて<br />
-&nbsp;&nbsp;&lt;input type=&quot;radio&quot; value=&quot;3. 求人について&quot; <strong>sendto=&quot;recruit@example.com&quot;</strong> /&gt;3. 求人について<br />
-&nbsp;&nbsp;&lt;input type=&quot;radio&quot; value=&quot;4. その他&quot; <strong>sendto=&quot;info@example.com&quot;</strong> /&gt;4. その他<br />
+&nbsp;&nbsp;&lt;input type=&quot;radio&quot; name=&quot;<strong>type</strong>&quot; value=&quot;1. 製品について&quot; <strong>sendto=&quot;product@example.com&quot;</strong> /&gt;1. 製品について<br />
+&nbsp;&nbsp;&lt;input type=&quot;radio&quot; name=&quot;<strong>type</strong>&quot; value=&quot;2. サイトについて&quot; <strong>sendto=&quot;info@example.com&quot;</strong> /&gt;2. サイトについて<br />
+&nbsp;&nbsp;&lt;input type=&quot;radio&quot; name=&quot;<strong>type</strong>&quot; value=&quot;3. 求人について&quot; <strong>sendto=&quot;recruit@example.com&quot;</strong> /&gt;3. 求人について<br />
+&nbsp;&nbsp;&lt;input type=&quot;radio&quot; name=&quot;<strong>type</strong>&quot; value=&quot;4. その他&quot; <strong>sendto=&quot;info@example.com&quot;</strong> /&gt;4. その他<br />
 &lt;/p&gt;
 </code>
 </p>
