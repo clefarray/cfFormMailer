@@ -312,7 +312,19 @@ class Class_cfFormMailer {
       preg_match("/name=(\"|\')(.+?)\\1/i", $tag[0], $m_name);
       preg_match("/value=(\"|\')(.*?)\\1/i", $tag[0], $m_value);
       $fieldName = str_replace("[]", "", $m_name[2]);
+      switch($m_type[2])
+      {
+        case 'submit';
+        case 'image';
+        case 'file';
+        case 'button';
+        case 'checkbox';
+        case 'radio';
       $fieldType = $m_type[2];
+          break;
+        default:
+          $fieldType = 'text';
+      }
 
       // 復元処理しないタグ
       if ($fieldName == '_mode' || $fieldType == 'submit' || $fieldType == 'image' || $fieldType == 'file' || $fieldType == 'button') continue;
