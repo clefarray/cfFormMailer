@@ -454,6 +454,8 @@ class Class_cfFormMailer {
     
     $reply_to = $this->getAutoReplyAddress();
 
+    $join = ALLOW_HTML ? '<br />' : "\n";
+
     // 管理者宛メールの本文生成
     if (!$tmpl = $this->loadTemplate(TMPL_MAIL_ADMIN)) {
       $this->setError('メールテンプレートの読み込みに失敗しました');
@@ -464,7 +466,7 @@ class Class_cfFormMailer {
     if (ADMIN_ISHTML) {
       $form = ALLOW_HTML ? $this->nl2br_array($form) : $this->encodeHTML($form, 'true');
     }
-    $tmpl = $this->replacePlaceHolder($tmpl, ($form + $additional));
+    $tmpl = $this->replacePlaceHolder($tmpl, ($form + $additional), $join);
     $tmpl = $this->clearPlaceHolder($tmpl);
     
     // 自動返信メールの本文生成
@@ -484,7 +486,7 @@ class Class_cfFormMailer {
       if (REPLY_ISHTML) {
         $form_u = ALLOW_HTML ? $this->nl2br_array($form_u) : $this->encodeHTML($form_u, 'true');
       }
-      $tmpl_u = $this->replacePlaceHolder($tmpl_u, ($form_u + $additional));
+      $tmpl_u = $this->replacePlaceHolder($tmpl_u, ($form_u + $additional), $join);
       $tmpl_u = $this->clearPlaceHolder($tmpl_u);
     }
     
