@@ -21,8 +21,10 @@ $mf = new Class_cfFormMailer($modx);
 /**
  * read config
  */
-$lang = (isset($language)) ? $language : $modx->config['manager_language'];
-$lang = str_replace("japanese-", "", $lang);
+$lang = (isset($language)) ? $language : strtolower($modx->config['manager_language']);
+if(strpos($lang,'euc-jp')===false) $lang = 'utf8';
+else                               $lang = 'euc-jp';
+
 define(CHARSET, $lang);
 if (!isset($config)) {
   return '<strong>ERROR!:</strong> `config`パラメータは必須です';

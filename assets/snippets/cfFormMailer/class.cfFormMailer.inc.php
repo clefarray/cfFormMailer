@@ -312,7 +312,19 @@ class Class_cfFormMailer {
       preg_match("/name=(\"|\')(.+?)\\1/i", $tag[0], $m_name);
       preg_match("/value=(\"|\')(.*?)\\1/i", $tag[0], $m_value);
       $fieldName = str_replace("[]", "", $m_name[2]);
+      switch($m_type[2])
+      {
+        case 'submit';
+        case 'image';
+        case 'file';
+        case 'button';
+        case 'checkbox';
+        case 'radio';
       $fieldType = $m_type[2];
+          break;
+        default:
+          $fieldType = 'text';
+      }
 
       // 復元処理しないタグ
       if ($fieldName == '_mode' || $fieldType == 'submit' || $fieldType == 'image' || $fieldType == 'file' || $fieldType == 'button') continue;
@@ -442,6 +454,8 @@ class Class_cfFormMailer {
     
     $reply_to = $this->getAutoReplyAddress();
 
+    $join = ALLOW_HTML ? '<br />' : "\n";
+
     // 管理者宛メールの本文生成
     if (!$tmpl = $this->loadTemplate(TMPL_MAIL_ADMIN)) {
       $this->setError('メールテンプレートの読み込みに失敗しました');
@@ -452,7 +466,7 @@ class Class_cfFormMailer {
     if (ADMIN_ISHTML) {
       $form = ALLOW_HTML ? $this->nl2br_array($form) : $this->encodeHTML($form, 'true');
     }
-    $tmpl = $this->replacePlaceHolder($tmpl, ($form + $additional));
+    $tmpl = $this->replacePlaceHolder($tmpl, ($form + $additional), $join);
     $tmpl = $this->clearPlaceHolder($tmpl);
     
     // 自動返信メールの本文生成
@@ -472,7 +486,7 @@ class Class_cfFormMailer {
       if (REPLY_ISHTML) {
         $form_u = ALLOW_HTML ? $this->nl2br_array($form_u) : $this->encodeHTML($form_u, 'true');
       }
-      $tmpl_u = $this->replacePlaceHolder($tmpl_u, ($form_u + $additional));
+      $tmpl_u = $this->replacePlaceHolder($tmpl_u, ($form_u + $additional), $join);
       $tmpl_u = $this->clearPlaceHolder($tmpl_u);
     }
     
