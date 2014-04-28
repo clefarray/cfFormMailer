@@ -118,6 +118,11 @@ class Class_cfFormMailer {
       return false;
     }
 
+    // ポストされた内容を一時的に退避（事故対策）
+    if ($mode == 'error' || $mode == 'conf') {
+        $_SESSION['_cf_autosave'] = $this->form;
+    }
+    
     // アクションごとの処理
     switch ($mode) {
       case "input":
@@ -152,6 +157,8 @@ class Class_cfFormMailer {
             }
             unset($_SESSION['_cf_uploaded']);
           }
+        } elseif ($mode == 'input' && isset($_SESSION['_cf_autosave'])) {
+            $html = $this->restoreForm($html, $_SESSION['_cf_autosave']);
         }
 
         break;
@@ -542,6 +549,8 @@ class Class_cfFormMailer {
       $vars = nl2br(htmlspecialchars($vars));
       $this->modx->logEvent(1, 3,$errormsg.$vars);
       return false;
+    } else {
+        if(isset($_SESSION['_cf_autosave'])) unset($_SESSION['_cf_autosave']);
     }
 
     // 自動返信
