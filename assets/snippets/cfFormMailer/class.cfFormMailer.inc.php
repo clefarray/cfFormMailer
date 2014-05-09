@@ -118,6 +118,11 @@ class Class_cfFormMailer {
       return false;
     }
 
+    // ポストされた内容を一時的に退避（事故対策）
+    if ($mode == 'error' || $mode == 'conf') {
+        $_SESSION['_cf_autosave'] = $this->form;
+    }
+    
     // アクションごとの処理
     switch ($mode) {
       case "input":
@@ -152,6 +157,8 @@ class Class_cfFormMailer {
             }
             unset($_SESSION['_cf_uploaded']);
           }
+        } elseif ($mode == 'input' && isset($_SESSION['_cf_autosave'])) {
+            $html = $this->restoreForm($html, $_SESSION['_cf_autosave']);
         }
 
         break;
@@ -542,6 +549,8 @@ class Class_cfFormMailer {
       $vars = nl2br(htmlspecialchars($vars));
       $this->modx->logEvent(1, 3,$errormsg.$vars);
       return false;
+    } else {
+        if(isset($_SESSION['_cf_autosave'])) unset($_SESSION['_cf_autosave']);
     }
 
     // 自動返信
@@ -767,10 +776,88 @@ class Class_cfFormMailer {
       }
     } else {
       $text = htmlspecialchars($text, ENT_QUOTES);
+      $text = $this->convertjp($text);
       $text = ($nl2br) ? nl2br($text) : $text;
     }
     return $text;
   }
+
+function convertjp($text)
+{
+	$text = mb_convert_kana($text, 'KV', 'UTF-8');
+	
+	$char['①'] = '(1)';
+	$char['②'] = '(2)';
+	$char['③'] = '(3)';
+	$char['④'] = '(4)';
+	$char['⑤'] = '(5)';
+	$char['⑥'] = '(6)';
+	$char['⑦'] = '(7)';
+	$char['⑧'] = '(8)';
+	$char['⑨'] = '(9)';
+	$char['⑩'] = '(10)';
+	$char['⑪'] = '(11)';
+	$char['⑫'] = '(12)';
+	$char['⑬'] = '(13)';
+	$char['⑭'] = '(14)';
+	$char['⑮'] = '(15)';
+	$char['⑯'] = '(16)';
+	$char['⑰'] = '(17)';
+	$char['⑱'] = '(18)';
+	$char['⑲'] = '(19)';
+	$char['⑳'] = '(20)';
+	$char['Ⅰ'] = 'I';
+	$char['Ⅱ'] = 'II';
+	$char['Ⅲ'] = 'III';
+	$char['Ⅳ'] = 'IV';
+	$char['Ⅴ'] = 'V';
+	$char['Ⅵ'] = 'VI';
+	$char['Ⅶ'] = 'VII';
+	$char['Ⅷ'] = 'VIII';
+	$char['Ⅸ'] = 'IX';
+	$char['Ⅹ'] = 'X';
+	$char['㍉'] = 'ミリ';
+	$char['㌔'] = 'キロ';
+	$char['㌢'] = 'センチ';
+	$char['㍍'] = 'メートル';
+	$char['㌘'] = 'グラム';
+	$char['㌧'] = 'トン';
+	$char['㌃'] = 'アール';
+	$char['㌶'] = 'ヘクタール';
+	$char['㍑'] = 'リットル';
+	$char['㍗'] = 'ワット';
+	$char['㌍'] = 'カロリー';
+	$char['㌦'] = 'ドル';
+	$char['㌣'] = 'セント';
+	$char['㌫'] = 'パーセント';
+	$char['㍊'] = 'ミリバール';
+	$char['㌻'] = 'ページ';
+	$char['㎜'] = 'mm';
+	$char['㎝'] = 'cm';
+	$char['㎞'] = 'km';
+	$char['㎎'] = 'mg';
+	$char['㎏'] = 'kg';
+	$char['㏄'] = 'cc';
+	$char['㎡'] = '平方メートル';
+	$char['㍻'] = '平成';
+	$char['〝'] = '「';
+	$char['〟'] = '」';
+	$char['№'] = 'No.';
+	$char['㏍'] = 'k.k.';
+	$char['℡'] = 'Tel';
+	$char['㊤'] = '(上)';
+	$char['㊥'] = '(中)';
+	$char['㊦'] = '(下)';
+	$char['㊧'] = '(左)';
+	$char['㊨'] = '(右)';
+	$char['㈱'] = '(株)';
+	$char['㈲'] = '(有)';
+	$char['㈹'] = '(代)';
+	$char['㍾'] = '明治';
+	$char['㍽'] = '大正';
+	$char['㍼'] = '昭和';
+	return str_replace(array_keys($char), array_values($char), $text);
+}
 
   /**
    * 改行コードを<br />タグに変換
