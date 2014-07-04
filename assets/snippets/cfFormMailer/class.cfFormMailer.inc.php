@@ -524,7 +524,13 @@ class Class_cfFormMailer {
     $subject = (ADMIN_SUBJECT) ? ADMIN_SUBJECT : "サイトから送信されたメール";
     $pm->Subject = $this->_encodeMimeHeader($subject, $mailCharset);
     if (defined('ADMIN_NAME') && ADMIN_NAME) {
-      $pm->FromName = $this->_encodeMimeHeader(ADMIN_NAME, $mailCharset, false);
+        $admin_name = '';
+        $tmp = explode('+', ADMIN_NAME);
+        foreach ($tmp as $_) {
+            $_ = trim($_);
+            $admin_name .= (!$this->form[$_]) ? $_ : $this->form[$_];
+        }
+        $pm->FromName = $this->_encodeMimeHeader($admin_name, $mailCharset, false);
     } else {
       $pm->FromName = '';
     }
