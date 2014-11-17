@@ -404,10 +404,10 @@ class Class_cfFormMailer {
     }
 
     // v0.0.6以降は PHPMailer 使用
-    include_once "manager/includes/controls/class.phpmailer.php";
+//    include_once "manager/includes/controls/class.phpmailer.php";
     
     // PHPMailerの拡張
-    include_once "phpmailer_ex.php";
+//    include_once "phpmailer_ex.php";
     
     // 改行コードの設定
     if (defined('LF_STYLE') && LF_STYLE == 1) {
@@ -498,8 +498,9 @@ class Class_cfFormMailer {
     }
     
     // 管理者宛送信
-    $pm = new PHPMailer_EX();
-    $pm->IsMail();
+//    $pm = new PHPMailer_EX();
+    $pm = &$modx->mail;
+//    $pm->IsMail();
     $pm->IsHTML(ADMIN_ISHTML);
     $pm->CharSet = $mailCharset;
     foreach ($admin_addresses as $v) {
@@ -562,8 +563,9 @@ class Class_cfFormMailer {
     // 自動返信
     if (AUTO_REPLY && $reply_to) {
       $reply_from = defined("REPLY_FROM") && REPLY_FROM ? REPLY_FROM : $admin_addresses[0];
-      $pm = new PHPMailer_EX();
-      $pm->IsMail();
+//      $pm = new PHPMailer_EX();
+      $pm = &$modx->mail;
+//      $pm->IsMail();
       $pm->IsHTML(REPLY_ISHTML);
       $pm->CharSet = $mailCharset;
       $pm->AddAddress($reply_to);
