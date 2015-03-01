@@ -913,17 +913,33 @@ function convertjp($text)
    * @return string プレースホルダが置換された文字列
    */
   function replacePlaceHolder($text, $params, $join = '<br />') {
+    global $modx;
+    
     if (!is_array($params) || !$text) return false;
 
     preg_match_all("/\[\+([^\+\|]+)(\|(.*?)(\((.+?)\))?)?\+\]/is", $text, $match, PREG_SET_ORDER);
     if (!count($match)) return $text;
 
+    if(isset($modx->config['output_filter'])&&$modx->config['output_filter']!=='0')
+        $toFilter = true;
+    else $toFilter = false;
+    if($toFilter) $modx->loadExtension('PHx') or die('Could not load PHx class.');
+    
     // 基本プレースホルダ
     $replaceKeys = array_keys($params);
     foreach ($match as $m) {
+      if($toFilter && strpos($m[1],':')!==false)
+          list($m[1],$modifiers) = explode(':', $m[1], 2);
+      else $modifiers = false;
       if (!in_array($m[1], $replaceKeys)) continue;
       $fType = $m[3];
       $val = $params[$m[1]];
+      if($toFilter && $modifiers!==false)
+      {
+          if($val==='&nbsp;') $val = '';
+          $val = $modx->filter->phxFilter($m[1],$val,$modifiers);
+          if($val==='') $val = '&nbsp;';
+      }
       $rep = "";
       
       // テキストフィルターの処理
