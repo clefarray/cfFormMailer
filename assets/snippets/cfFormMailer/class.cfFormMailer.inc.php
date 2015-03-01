@@ -172,7 +172,7 @@ class Class_cfFormMailer {
           unset($_SESSION['_cf_uploaded']);
           foreach ($_FILES as $field => $vals) {
             if ($_FILES[$field]['error'] == UPLOAD_ERR_OK) {
-              if (defined(UPLOAD_TMP_PATH) && UPLOAD_TMP_PATH) {
+              if (defined('UPLOAD_TMP_PATH') && UPLOAD_TMP_PATH) {
                 $new_filepath = $this->modx->config['base_path'] . "assets/snippets/cfFormMailer/tmp/" . urlencode($_FILES[$field]['name']);
               } else {
                 $new_filepath = dirname($_FILES[$field]['tmp_name']) . DIRECTORY_SEPARATOR . urlencode($_FILES[$field]['name']);
