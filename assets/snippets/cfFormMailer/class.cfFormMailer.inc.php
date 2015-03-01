@@ -1528,7 +1528,9 @@ function convertjp($text)
   function _def_tel($value, $param, $field) {
     // 強制的に半角に変換します。
     $this->form[$field] = mb_convert_kana($this->form[$field], "a", CHARSET);
-    return (preg_match("/[^0-9\-+]/", $this->form[$field]) || strlen($this->form[$field]) < 8) ? '半角数字とハイフンで正しく入力してください' : true;
+    $checkLen = (substr($this->form[$field],0,1)=='0') ? 10 : 5;
+    $checkStr = preg_replace('/[^0-9]/','',$this->form[$field]);
+    return (preg_match("/[^0-9\-+]/", $checkStr) || strlen($checkStr) < $checkLen) ? '半角数字とハイフンで正しく入力してください' : true;
   }
   
   /**
