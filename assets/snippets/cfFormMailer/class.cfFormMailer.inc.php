@@ -1015,17 +1015,17 @@ function convertjp($text)
    */
   function addHiddenTags($html, $form) {
     if (!is_array($form)) return $html;
-    $tag = "";
+    $tag = array();
     foreach ($form as $k => $v) {
       if (is_array($v)) {
-        foreach ($v as $k2 => $v2) {
-          $tag .= "<input type=\"hidden\" name=\"" .$this->encodeHTML($k) . "[]\" value=\"" . $this->encodeHTML($v2) . "\" />\n";
+        foreach ($v as $subv) {
+          $tag[] = sprintf('<input type="hidden" name="%s[]" value="%s" />',$this->encodeHTML($k),$this->encodeHTML($subv));
         }
       } else {
-        $tag .= "<input type=\"hidden\" name=\"". $this->encodeHTML($k) . "\" value=\"" . $this->encodeHTML($v) . "\" />\n";
+        $tag[] = sprintf('<input type="hidden" name="%s" value="%s" />',$this->encodeHTML($k),$this->encodeHTML($v));
       }
     }
-    return str_replace("</form>", $tag . "</form>", $html);
+    return str_replace("</form>", join("\n",$tag) . "</form>", $html);
   }
 
   /**
