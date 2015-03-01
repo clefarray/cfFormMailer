@@ -1534,6 +1534,20 @@ function convertjp($text)
   }
   
   /**
+   * tel : 郵便番号
+   *   Added in v1.3.x
+   */
+  function _def_zip($value, $param, $field) {
+    // 強制的に半角に変換します。
+    $this->form[$field] = mb_convert_kana($this->form[$field], 'as', CHARSET);
+    $this->form[$field] = preg_replace('/[^0-9]/','',$this->form[$field]);
+    $str = $this->form[$field];
+    if(strlen($str) !== 7) return '半角数字とハイフンで正しく入力してください';
+    $this->form[$field] = substr($str,0,3) . '-' . substr($str,-4);
+    return true;
+  }
+  
+  /**
    * allowtype(type) : アップロードを許可するファイル形式
    *   Added in v1.0
    */
