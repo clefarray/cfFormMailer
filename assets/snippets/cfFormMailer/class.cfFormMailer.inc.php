@@ -340,22 +340,22 @@ class Class_cfFormMailer {
       if ($tag[1] == 'input' && $fieldType == 'text') {
         if (count($m_value) > 1) {
           $pat = $m_value[0];
-          $rep = "value=\"" . $this->encodeHTML($params[$fieldName])."\"";
+          $rep = 'value="' . $this->encodeHTML($params[$fieldName]).'"';
         } else {
           $pat = $tag[2];
-          $rep = $tag[2] . " value=\"" . $this->encodeHTML($params[$fieldName])."\"";
+          $rep = $tag[2] . ' value="' . $this->encodeHTML($params[$fieldName]).'"';
         }
       // チェックボックス
       } elseif ($tag[1] == 'input' && $fieldType == 'checkbox') {
         if ($m_value[2] == $params[$fieldName] || (is_array($params[$fieldName]) && in_array($m_value[2], $params[$fieldName]))) {
           $pat = $tag[2];
-          $rep = $tag[2] . " checked=\"checked\"";
+          $rep = $tag[2] . ' checked="checked"';
         }
       // ラジオボタン
       } elseif ($tag[1] == 'input' && $fieldType == 'radio') {
         if ($m_value[2] == $params[$fieldName]) {
           $pat = $tag[2];
-          $rep = $tag[2] . " checked=\"checked\"";
+          $rep = $tag[2] . ' checked="checked"';
         }
       // プルダウンリスト
       } elseif ($tag[1] == 'select') {
@@ -367,7 +367,7 @@ class Class_cfFormMailer {
             $def_deleted = preg_replace("/selected(=('|\")selected\\2)?/ism", "", $opt_v[0]);
             $tag[0] = str_replace($opt_v[0], $def_deleted, $tag[0]);
             if ($opt_v[3] == $params[$fieldName]) {
-              $tag[0] = str_replace($opt_v[0], str_replace($opt_v[4], " selected=\"selected\"".$opt_v[4], $opt_v[0]), $tag[0]);
+              $tag[0] = str_replace($opt_v[0], str_replace($opt_v[4], ' selected="selected"'.$opt_v[4], $opt_v[0]), $tag[0]);
             }
           }
           $new = $tag[0];
@@ -561,7 +561,7 @@ class Class_cfFormMailer {
 
     // 自動返信
     if (AUTO_REPLY && $reply_to) {
-      $reply_from = defined("REPLY_FROM") && REPLY_FROM ? REPLY_FROM : $admin_addresses[0];
+      $reply_from = defined('REPLY_FROM') && REPLY_FROM ? REPLY_FROM : $admin_addresses[0];
       $pm = new PHPMailer_EX();
       $pm->IsMail();
       $pm->IsHTML(REPLY_ISHTML);
@@ -723,7 +723,7 @@ class Class_cfFormMailer {
               $rep = str_replace($match_classes[0], $newClass, $m[0]);
             // そうでなければ class 要素を追加
             } else {
-              $rep = preg_replace("#\s*/?>$#", "", $m[0]) . " class=\"" . INVALID_CLASS ."\"" . ($m[1] == 'input' ? " /" : "") . ">";
+              $rep = preg_replace("#\s*/?>$#", "", $m[0]) . ' class="' . INVALID_CLASS .'"' . ($m[1] == 'input' ? " /" : "") . ">";
             }
             $html = str_replace($m[0], $rep, $html);
           }
