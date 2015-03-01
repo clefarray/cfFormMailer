@@ -1015,6 +1015,7 @@ function convertjp($text)
    */
   function addHiddenTags($html, $form) {
     if (!is_array($form)) return $html;
+    if (isset($form['_mode'])) unset($form['_mode']);
     $tag = array();
     foreach ($form as $k => $v) {
       if (is_array($v)) {
