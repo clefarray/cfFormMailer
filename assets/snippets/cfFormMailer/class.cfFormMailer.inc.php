@@ -403,12 +403,6 @@ class Class_cfFormMailer {
       return true;
     }
 
-    // v0.0.6以降は PHPMailer 使用
-    include_once "manager/includes/controls/class.phpmailer.php";
-    
-    // PHPMailerの拡張
-    include_once "phpmailer_ex.php";
-    
     // 改行コードの設定
     if (defined('LF_STYLE') && LF_STYLE == 1) {
       $this->lf = "\r\n";
@@ -427,9 +421,6 @@ class Class_cfFormMailer {
     } else {
       $mailCharset = 'iso-2022-jp';
     }
-    
-    mb_language('ja');
-    mb_internal_encoding(CHARSET);
     
     // 管理者メールアドレス特定
     $admin_addresses = array();
@@ -498,10 +489,8 @@ class Class_cfFormMailer {
     }
     
     // 管理者宛送信
-    $pm = new PHPMailer_EX();
-    $pm->IsMail();
-    $pm->IsHTML(ADMIN_ISHTML);
-    $pm->CharSet = $mailCharset;
+    $this->modx->loadExtension("MODxMailer");
+    $pm = &$this->modx->mail;
     foreach ($admin_addresses as $v) {
         $pm->AddAddress($v);
     }
@@ -522,7 +511,7 @@ class Class_cfFormMailer {
       }
     }
     $subject = (ADMIN_SUBJECT) ? ADMIN_SUBJECT : "サイトから送信されたメール";
-    $pm->Subject = $this->_encodeMimeHeader($subject, $mailCharset);
+    $pm->Subject = $subject;
     if (defined('ADMIN_NAME') && ADMIN_NAME) {
         $admin_name = '';
         $tmp = explode('+', ADMIN_NAME);
@@ -530,7 +519,7 @@ class Class_cfFormMailer {
             $_ = trim($_);
             $admin_name .= (!$this->form[$_]) ? $_ : $this->form[$_];
         }
-        $pm->FromName = $this->_encodeMimeHeader($admin_name, $mailCharset, false);
+        $pm->FromName = $admin_name;
     } else {
       $pm->FromName = '';
     }
@@ -562,14 +551,10 @@ class Class_cfFormMailer {
     // 自動返信
     if (AUTO_REPLY && $reply_to) {
       $reply_from = defined('REPLY_FROM') && REPLY_FROM ? REPLY_FROM : $admin_addresses[0];
-      $pm = new PHPMailer_EX();
-      $pm->IsMail();
-      $pm->IsHTML(REPLY_ISHTML);
-      $pm->CharSet = $mailCharset;
       $pm->AddAddress($reply_to);
       $subject = (REPLY_SUBJECT) ? REPLY_SUBJECT : "自動返信メール";
-      $pm->Subject = $this->_encodeMimeHeader($subject, $mailCharset);
-      $pm->FromName = $this->_encodeMimeHeader(REPLY_FROMNAME, $mailCharset, false);
+      $pm->Subject = $subject;
+      $pm->FromName = REPLY_FROMNAME;
       $pm->From = $reply_from;
       $pm->Sender = $reply_from;
       $pm->Body = mb_convert_encoding($tmpl_u, $mailCharset, CHARSET);
