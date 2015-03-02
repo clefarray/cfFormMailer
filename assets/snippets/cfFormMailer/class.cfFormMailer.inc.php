@@ -172,7 +172,7 @@ class Class_cfFormMailer {
           unset($_SESSION['_cf_uploaded']);
           foreach ($_FILES as $field => $vals) {
             if ($_FILES[$field]['error'] == UPLOAD_ERR_OK) {
-              if (defined(UPLOAD_TMP_PATH) && UPLOAD_TMP_PATH) {
+              if (defined('UPLOAD_TMP_PATH') && UPLOAD_TMP_PATH) {
                 $new_filepath = $this->modx->config['base_path'] . "assets/snippets/cfFormMailer/tmp/" . urlencode($_FILES[$field]['name']);
               } else {
                 $new_filepath = dirname($_FILES[$field]['tmp_name']) . DIRECTORY_SEPARATOR . urlencode($_FILES[$field]['name']);
@@ -340,22 +340,22 @@ class Class_cfFormMailer {
       if ($tag[1] == 'input' && $fieldType == 'text') {
         if (count($m_value) > 1) {
           $pat = $m_value[0];
-          $rep = "value=\"" . $this->encodeHTML($params[$fieldName])."\"";
+          $rep = 'value="' . $this->encodeHTML($params[$fieldName]).'"';
         } else {
           $pat = $tag[2];
-          $rep = $tag[2] . " value=\"" . $this->encodeHTML($params[$fieldName])."\"";
+          $rep = $tag[2] . ' value="' . $this->encodeHTML($params[$fieldName]).'"';
         }
       // チェックボックス
       } elseif ($tag[1] == 'input' && $fieldType == 'checkbox') {
         if ($m_value[2] == $params[$fieldName] || (is_array($params[$fieldName]) && in_array($m_value[2], $params[$fieldName]))) {
           $pat = $tag[2];
-          $rep = $tag[2] . " checked=\"checked\"";
+          $rep = $tag[2] . ' checked="checked"';
         }
       // ラジオボタン
       } elseif ($tag[1] == 'input' && $fieldType == 'radio') {
         if ($m_value[2] == $params[$fieldName]) {
           $pat = $tag[2];
-          $rep = $tag[2] . " checked=\"checked\"";
+          $rep = $tag[2] . ' checked="checked"';
         }
       // プルダウンリスト
       } elseif ($tag[1] == 'select') {
@@ -367,7 +367,7 @@ class Class_cfFormMailer {
             $def_deleted = preg_replace("/selected(=('|\")selected\\2)?/ism", "", $opt_v[0]);
             $tag[0] = str_replace($opt_v[0], $def_deleted, $tag[0]);
             if ($opt_v[3] == $params[$fieldName]) {
-              $tag[0] = str_replace($opt_v[0], str_replace($opt_v[4], " selected=\"selected\"".$opt_v[4], $opt_v[0]), $tag[0]);
+              $tag[0] = str_replace($opt_v[0], str_replace($opt_v[4], ' selected="selected"'.$opt_v[4], $opt_v[0]), $tag[0]);
             }
           }
           $new = $tag[0];
@@ -561,7 +561,7 @@ class Class_cfFormMailer {
 
     // 自動返信
     if (AUTO_REPLY && $reply_to) {
-      $reply_from = defined("REPLY_FROM") && REPLY_FROM ? REPLY_FROM : $admin_addresses[0];
+      $reply_from = defined('REPLY_FROM') && REPLY_FROM ? REPLY_FROM : $admin_addresses[0];
       $pm = new PHPMailer_EX();
       $pm->IsMail();
       $pm->IsHTML(REPLY_ISHTML);
@@ -723,7 +723,7 @@ class Class_cfFormMailer {
               $rep = str_replace($match_classes[0], $newClass, $m[0]);
             // そうでなければ class 要素を追加
             } else {
-              $rep = preg_replace("#\s*/?>$#", "", $m[0]) . " class=\"" . INVALID_CLASS ."\"" . ($m[1] == 'input' ? " /" : "") . ">";
+              $rep = preg_replace("#\s*/?>$#", "", $m[0]) . ' class="' . INVALID_CLASS .'"' . ($m[1] == 'input' ? " /" : "") . ">";
             }
             $html = str_replace($m[0], $rep, $html);
           }
@@ -913,17 +913,33 @@ function convertjp($text)
    * @return string プレースホルダが置換された文字列
    */
   function replacePlaceHolder($text, $params, $join = '<br />') {
+    global $modx;
+    
     if (!is_array($params) || !$text) return false;
 
     preg_match_all("/\[\+([^\+\|]+)(\|(.*?)(\((.+?)\))?)?\+\]/is", $text, $match, PREG_SET_ORDER);
     if (!count($match)) return $text;
 
+    if(isset($modx->config['output_filter'])&&$modx->config['output_filter']!=='0')
+        $toFilter = true;
+    else $toFilter = false;
+    if($toFilter) $modx->loadExtension('PHx') or die('Could not load PHx class.');
+    
     // 基本プレースホルダ
     $replaceKeys = array_keys($params);
     foreach ($match as $m) {
+      if($toFilter && strpos($m[1],':')!==false)
+          list($m[1],$modifiers) = explode(':', $m[1], 2);
+      else $modifiers = false;
       if (!in_array($m[1], $replaceKeys)) continue;
       $fType = $m[3];
       $val = $params[$m[1]];
+      if($toFilter && $modifiers!==false)
+      {
+          if($val==='&nbsp;') $val = '';
+          $val = $modx->filter->phxFilter($m[1],$val,$modifiers);
+          if($val==='') $val = '&nbsp;';
+      }
       $rep = "";
       
       // テキストフィルターの処理
@@ -999,17 +1015,18 @@ function convertjp($text)
    */
   function addHiddenTags($html, $form) {
     if (!is_array($form)) return $html;
-    $tag = "";
+    if (isset($form['_mode'])) unset($form['_mode']);
+    $tag = array();
     foreach ($form as $k => $v) {
       if (is_array($v)) {
-        foreach ($v as $k2 => $v2) {
-          $tag .= "<input type=\"hidden\" name=\"" .$this->encodeHTML($k) . "[]\" value=\"" . $this->encodeHTML($v2) . "\" />\n";
+        foreach ($v as $subv) {
+          $tag[] = sprintf('<input type="hidden" name="%s[]" value="%s" />',$this->encodeHTML($k),$this->encodeHTML($subv));
         }
       } else {
-        $tag .= "<input type=\"hidden\" name=\"". $this->encodeHTML($k) . "\" value=\"" . $this->encodeHTML($v) . "\" />\n";
+        $tag[] = sprintf('<input type="hidden" name="%s" value="%s" />',$this->encodeHTML($k),$this->encodeHTML($v));
       }
     }
-    return str_replace("</form>", $tag . "</form>", $html);
+    return str_replace("</form>", join("\n",$tag) . "</form>", $html);
   }
 
   /**
@@ -1511,7 +1528,23 @@ function convertjp($text)
   function _def_tel($value, $param, $field) {
     // 強制的に半角に変換します。
     $this->form[$field] = mb_convert_kana($this->form[$field], "a", CHARSET);
-    return (preg_match("/[^0-9\-+]/", $this->form[$field]) || strlen($this->form[$field]) < 8) ? '半角数字とハイフンで正しく入力してください' : true;
+    $checkLen = (substr($this->form[$field],0,1)=='0') ? 10 : 5;
+    $checkStr = preg_replace('/[^0-9]/','',$this->form[$field]);
+    return (preg_match("/[^0-9\-+]/", $checkStr) || strlen($checkStr) < $checkLen) ? '半角数字とハイフンで正しく入力してください' : true;
+  }
+  
+  /**
+   * tel : 郵便番号
+   *   Added in v1.3.x
+   */
+  function _def_zip($value, $param, $field) {
+    // 強制的に半角に変換します。
+    $this->form[$field] = mb_convert_kana($this->form[$field], 'as', CHARSET);
+    $this->form[$field] = preg_replace('/[^0-9]/','',$this->form[$field]);
+    $str = $this->form[$field];
+    if(strlen($str) !== 7) return '半角数字とハイフンで正しく入力してください';
+    $this->form[$field] = substr($str,0,3) . '-' . substr($str,-4);
+    return true;
   }
   
   /**
