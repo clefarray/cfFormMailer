@@ -513,13 +513,7 @@ class Class_cfFormMailer {
     $subject = (ADMIN_SUBJECT) ? ADMIN_SUBJECT : "サイトから送信されたメール";
     $pm->Subject = $subject;
     if (defined('ADMIN_NAME') && ADMIN_NAME) {
-        $admin_name = '';
-        $tmp = explode('+', ADMIN_NAME);
-        foreach ($tmp as $_) {
-            $_ = trim($_);
-            $admin_name .= (!$this->form[$_]) ? $_ : $this->form[$_];
-        }
-        $pm->FromName = $admin_name;
+        $pm->FromName = $this->modx->parseText(ADMIN_NAME,$this->form);
     } else {
       $pm->FromName = '';
     }
