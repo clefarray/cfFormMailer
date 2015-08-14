@@ -879,6 +879,7 @@ function convertjp($text)
       $html = ($tmpl = $this->modx->getChunk($name)) ? $tmpl : false;
     }
     if ($html) {
+      if(strpos($html,'[!')!==false) $html = str_replace(array('[!','!]'),array('[[',']]'),$html);
       $html = $this->modx->parseDocumentSource($html);
       return $html;
     } else {
