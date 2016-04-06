@@ -272,7 +272,7 @@ class Class_cfFormMailer {
       }
       
       // 入力値の検証
-      if (!empty($this->form[$field]) || !empty($_FILES[$field]['tmp_name'])) {
+      if (!empty($this->form[$field]) || !empty($_FILES[$field]['tmp_name']) || $this->form[$field]==='0') {
         foreach ($methods as $indiv_m) {
           preg_match("/^([^\(]+)(\(([^\)]*)\))?$/", $indiv_m, $method_name);
           // 標準メソッドを処理
