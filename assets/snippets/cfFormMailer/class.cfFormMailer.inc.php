@@ -1449,13 +1449,13 @@ function convertjp($text)
   function _def_len($value, $param, $field) {
     if (preg_match("/([0-9]+)?(\-)?([0-9]+)?/", $param, $match)) {
       if ($match[1] && empty($match[2]) && empty($match[3])) {
-        if (strlen($value) != $match[1]) { return "{$match[1]}文字で入力してください";}
+        if (mb_strlen($value) != $match[1]) { return "{$match[1]}文字で入力してください";}
       } elseif (empty($match[1]) && $match[2] && $match[3]) {
-        if (strlen($value) > $match[3]) { return "{$match[3]}文字以内で入力してください";}
+        if (mb_strlen($value) > $match[3]) { return "{$match[3]}文字以内で入力してください";}
       } elseif ($match[1] && $match[2] && empty($match[3])) {
-        if (strlen($value) < $match[1]) { return "{$match[1]}文字以上で入力してください";}
+        if (mb_strlen($value) < $match[1]) { return "{$match[1]}文字以上で入力してください";}
       } elseif ($match[1] && $match[2] && $match[3]) {
-        if (strlen($value) < $match[1] || strlen($value) > $match[3]) { return "{$match[1]}～{$match[3]}文字で入力してください";}
+        if (mb_strlen($value) < $match[1] || mb_strlen($value) > $match[3]) { return "{$match[1]}～{$match[3]}文字で入力してください";}
       }
     }
     return true;
@@ -1476,7 +1476,7 @@ function convertjp($text)
   }
 
   /**
-   * rande(min, max) : 値範囲チェック
+   * range(min, max) : 値範囲チェック
    *   Added in v0.0.5
    */
   function _def_range($value, $param, $field) {
