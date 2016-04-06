@@ -523,7 +523,8 @@ class Class_cfFormMailer {
     } else {
       $pm->FromName = '';
     }
-    $pm->From = ($reply_to ? $reply_to : ADMIN_MAIL);
+    //$pm->From = ($reply_to ? $reply_to : ADMIN_MAIL);
+    $pm->From = defined('REPLY_FROM') && REPLY_FROM ? REPLY_FROM : ADMIN_MAIL;  // #通知メールの差出人は自動返信と同様をデフォルトに。
     $pm->Sender = $pm->From;
     $pm->Body = mb_convert_encoding($tmpl, $mailCharset, CHARSET);
     $pm->Encoding = '7bit';
