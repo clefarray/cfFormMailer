@@ -551,6 +551,8 @@ class Class_cfFormMailer {
     // 自動返信
     if (AUTO_REPLY && $reply_to) {
       $reply_from = defined('REPLY_FROM') && REPLY_FROM ? REPLY_FROM : $admin_addresses[0];
+      $this->modx->loadExtension("MODxMailer");
+      $pm = &$this->modx->mail;
       $pm->AddAddress($reply_to);
       $subject = (REPLY_SUBJECT) ? REPLY_SUBJECT : "自動返信メール";
       $pm->Subject = $subject;
