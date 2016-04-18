@@ -513,13 +513,7 @@ class Class_cfFormMailer {
     $subject = (ADMIN_SUBJECT) ? ADMIN_SUBJECT : "サイトから送信されたメール";
     $pm->Subject = $subject;
     if (defined('ADMIN_NAME') && ADMIN_NAME) {
-        $admin_name = '';
-        $tmp = explode('+', ADMIN_NAME);
-        foreach ($tmp as $_) {
-            $_ = trim($_);
-            $admin_name .= (!$this->form[$_]) ? $_ : $this->form[$_];
-        }
-        $pm->FromName = $admin_name;
+        $pm->FromName = $this->modx->parseText(ADMIN_NAME,$this->form);
     } else {
       $pm->FromName = '';
     }
@@ -550,6 +544,8 @@ class Class_cfFormMailer {
 
     // 自動返信
     if (AUTO_REPLY && $reply_to) {
+      $this->modx->loadExtension("MODxMailer");
+      $pm = &$this->modx->mail;
       $reply_from = defined('REPLY_FROM') && REPLY_FROM ? REPLY_FROM : $admin_addresses[0];
       $pm->AddAddress($reply_to);
       $subject = (REPLY_SUBJECT) ? REPLY_SUBJECT : "自動返信メール";
@@ -879,6 +875,7 @@ function convertjp($text)
       $html = ($tmpl = $this->modx->getChunk($name)) ? $tmpl : false;
     }
     if ($html) {
+      if(strpos($html,'[!')!==false) $html = str_replace(array('[!','!]'),array('[[',']]'),$html);
       $html = $this->modx->parseDocumentSource($html);
       return $html;
     } else {
