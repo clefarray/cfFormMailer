@@ -272,7 +272,7 @@ class Class_cfFormMailer {
       }
       
       // 入力値の検証
-      if (!empty($this->form[$field]) || !empty($_FILES[$field]['tmp_name'])) {
+      if (!empty($this->form[$field]) || !empty($_FILES[$field]['tmp_name']) || $this->form[$field]==='0') {
         foreach ($methods as $indiv_m) {
           preg_match("/^([^\(]+)(\(([^\)]*)\))?$/", $indiv_m, $method_name);
           // 標準メソッドを処理
@@ -517,7 +517,8 @@ class Class_cfFormMailer {
     } else {
       $pm->FromName = '';
     }
-    $pm->From = ($reply_to ? $reply_to : ADMIN_MAIL);
+    //$pm->From = ($reply_to ? $reply_to : ADMIN_MAIL);
+    $pm->From = defined('REPLY_FROM') && REPLY_FROM ? REPLY_FROM : ADMIN_MAIL;  // #通知メールの差出人は自動返信と同様をデフォルトに。
     $pm->Sender = $pm->From;
     $pm->Body = mb_convert_encoding($tmpl, $mailCharset, CHARSET);
     $pm->Encoding = '7bit';
@@ -547,6 +548,8 @@ class Class_cfFormMailer {
       $this->modx->loadExtension("MODxMailer");
       $pm = &$this->modx->mail;
       $reply_from = defined('REPLY_FROM') && REPLY_FROM ? REPLY_FROM : $admin_addresses[0];
+      $this->modx->loadExtension("MODxMailer");
+      $pm = &$this->modx->mail;
       $pm->AddAddress($reply_to);
       $subject = (REPLY_SUBJECT) ? REPLY_SUBJECT : "自動返信メール";
       $pm->Subject = $subject;
@@ -1443,13 +1446,13 @@ function convertjp($text)
   function _def_len($value, $param, $field) {
     if (preg_match("/([0-9]+)?(\-)?([0-9]+)?/", $param, $match)) {
       if ($match[1] && empty($match[2]) && empty($match[3])) {
-        if (strlen($value) != $match[1]) { return "{$match[1]}文字で入力してください";}
+        if (mb_strlen($value) != $match[1]) { return "{$match[1]}文字で入力してください";}
       } elseif (empty($match[1]) && $match[2] && $match[3]) {
-        if (strlen($value) > $match[3]) { return "{$match[3]}文字以内で入力してください";}
+        if (mb_strlen($value) > $match[3]) { return "{$match[3]}文字以内で入力してください";}
       } elseif ($match[1] && $match[2] && empty($match[3])) {
-        if (strlen($value) < $match[1]) { return "{$match[1]}文字以上で入力してください";}
+        if (mb_strlen($value) < $match[1]) { return "{$match[1]}文字以上で入力してください";}
       } elseif ($match[1] && $match[2] && $match[3]) {
-        if (strlen($value) < $match[1] || strlen($value) > $match[3]) { return "{$match[1]}～{$match[3]}文字で入力してください";}
+        if (mb_strlen($value) < $match[1] || mb_strlen($value) > $match[3]) { return "{$match[1]}～{$match[3]}文字で入力してください";}
       }
     }
     return true;
@@ -1470,7 +1473,7 @@ function convertjp($text)
   }
 
   /**
-   * rande(min, max) : 値範囲チェック
+   * range(min, max) : 値範囲チェック
    *   Added in v0.0.5
    */
   function _def_range($value, $param, $field) {
