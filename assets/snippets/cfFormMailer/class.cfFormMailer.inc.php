@@ -905,9 +905,11 @@ function convertjp($text)
     preg_match_all("/\[\+([^\+\|]+)(\|(.*?)(\((.+?)\))?)?\+\]/is", $text, $match, PREG_SET_ORDER);
     if (!count($match)) return $text;
 
-    if(isset($modx->config['output_filter'])&&$modx->config['output_filter']!=='0')
-        $toFilter = true;
-    else $toFilter = false;
+    //1.0.15J以降 $modx->config['output_filter']は廃止
+    $toFilter = true;
+    //旧バージョン用
+    if(isset($modx->config['output_filter']) &&$modx->config['output_filter']==='0') $toFilter = false;
+
     if($toFilter) $modx->loadExtension('PHx') or die('Could not load PHx class.');
     
     // 基本プレースホルダ
