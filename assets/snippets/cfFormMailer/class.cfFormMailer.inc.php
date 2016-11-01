@@ -322,6 +322,7 @@ class Class_cfFormMailer {
       switch($m_type[2])
       {
         case 'submit';
+        case 'reset';
         case 'image';
         case 'file';
         case 'button';
