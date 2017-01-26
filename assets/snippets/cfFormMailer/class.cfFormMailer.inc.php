@@ -988,6 +988,8 @@ function convertjp($text)
   function getCaptchaUri() {
     if(is_file($this->modx->config['base_path'] . 'captcha.php'))
       $captchalib = 'captcha.php';
+    elseif(is_file(MODX_MANAGER_PATH.'media/captcha/veriword.php'))
+      $captchalib = 'index.php?get=captcha';
     else
       $captchalib = 'manager/includes/veriword.php?tmp=' . mt_rand();
     return $this->modx->config['base_url']  . $captchalib;
