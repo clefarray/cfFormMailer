@@ -61,7 +61,7 @@ class Class_cfFormMailer {
    * コンストラクタ
    *
    */
-  function Class_cfFormMailer(&$modx) {
+  function __construct(&$modx) {
     if (!$modx) {
       return false;
     }
