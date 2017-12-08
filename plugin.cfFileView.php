@@ -12,21 +12,17 @@
 
 $viewFileName = 'cfFileView';
 
-switch ($modx->Event->name) {
-  case "OnPageNotFound":
-    if ($modx->documentIdentifier == $viewFileName) {
-      $field = $_GET['field'];
-      if (!$field) {
-        exit;
-      }
+if ($modx->event->name!=='OnPageNotFound') return;
+if ($modx->documentIdentifier !== $viewFileName) return;
 
-      if (isset($_SESSION['_cf_uploaded'][$field]) && is_file($_SESSION['_cf_uploaded'][$field]['path'])) {
-        header('P3P: CP="NOI NID ADMa OUR IND UNI COM NAV"');
-        header('Cache-Control: private, must-revalidate');
-        header('Content-type: ' . $_SESSION['_cf_uploaded'][$field]['mime']);
-        readfile($_SESSION['_cf_uploaded'][$field]['path']);
-      }
-      exit;
-    }
-    break;
-}
+$field = $_GET['field'];
+
+if (!$field) exit;
+if (!isset($_SESSION['_cf_uploaded'][$field])) exit;
+if (!is_file($_SESSION['_cf_uploaded'][$field]['path'])) exit;
+
+header('P3P: CP="NOI NID ADMa OUR IND UNI COM NAV"');
+header('Cache-Control: private, must-revalidate');
+header('Content-type: ' . $_SESSION['_cf_uploaded'][$field]['mime']);
+readfile($_SESSION['_cf_uploaded'][$field]['path']);
+exit;
