@@ -103,10 +103,12 @@ class Class_cfFormMailer {
       case 'comp':
         if (defined('COMPLETE_REDIRECT') && COMPLETE_REDIRECT) {
           if (preg_match("/^[1-9][0-9]*$/", COMPLETE_REDIRECT)) {
-            $this->modx->sendRedirect($this->modx->makeUrl(COMPLETE_REDIRECT));
-          } elseif (preg_match("/^https?:\/\//i", COMPLETE_REDIRECT)) {
-            $this->modx->sendRedirect(COMPLETE_REDIRECT);
+            $url = $this->modx->makeUrl(COMPLETE_REDIRECT);
+          } else {
+            $url = COMPLETE_REDIRECT;
           }
+          if(isset($_SESSION['_cf_autosave'])) unset($_SESSION['_cf_autosave']);
+          $this->modx->sendRedirect(COMPLETE_REDIRECT);
         }
         $html = $this->loadTemplate(TMPL_COMP);
         break;
