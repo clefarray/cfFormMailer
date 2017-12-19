@@ -23,8 +23,8 @@ $mf = new Class_cfFormMailer($modx);
  * read config
  */
 $lang = (isset($language)) ? $language : strtolower($modx->config['manager_language']);
-if(strpos($lang,'euc-jp')===false) $lang = 'utf8';
-else                               $lang = 'euc-jp';
+if(strpos($lang,'euc-jp')!==false) $lang = 'euc-jp';
+else                               $lang = 'utf8';
 
 define(CHARSET, $lang);
 if (!isset($config)) {
