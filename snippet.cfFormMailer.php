@@ -47,7 +47,7 @@ if (is_file($snippet_path . 'additionalMethods.inc.php')) {
  * Action
  */
 switch($_POST['_mode']) {
-  case "conf":
+  case 'conf':
     $pageType = ($mf->validate()) ? 'conf' : 'error';
     break;
   case 'send':
