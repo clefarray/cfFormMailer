@@ -108,7 +108,7 @@ class Class_cfFormMailer {
             $url = COMPLETE_REDIRECT;
           }
           if(isset($_SESSION['_cf_autosave'])) unset($_SESSION['_cf_autosave']);
-          $this->modx->sendRedirect(COMPLETE_REDIRECT);
+          $this->modx->sendRedirect($url);
         }
         $html = $this->loadTemplate(TMPL_COMP);
         break;
