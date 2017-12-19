@@ -332,6 +332,7 @@ class Class_cfFormMailer {
         case 'file';
         case 'button';
         case 'reset';
+        case 'hidden';
           continue 2;
         case 'checkbox';
         case 'radio';
