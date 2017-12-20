@@ -4,7 +4,7 @@
  * 
  * @author  Clefarray Factory
  * @link  http://www.clefarray-web.net/
- * @version 1.3
+ * @version 1.4
  *
  * Documentation: http://www.clefarray-web.net/blog/manual/cfFormMailer_manual.html
  * LICENSE: GNU General Public License (GPL) (http://www.gnu.org/copyleft/gpl.html)
@@ -15,45 +15,45 @@ class Class_cfFormMailer {
     /**
      * modxオブジェクト
      */
-    var $modx;
+    private $modx;
     
     /**
      * postされたデータ
-     * @var array
+     * @private array
      */
-    var $form;
+    private $form;
 
     /**
      * 検証エラーのメッセージ
-     * @var array
+     * @private array
      */
-    var $formError;
+    private $formError;
 
     /**
      * システムエラーメッセージ
-     * @var string
+     * @private string
      */
-    var $error_message;
+    private $error_message;
 
     /**
      * フォームの valid 要素
-     * @var array
+     * @private array
      */
-    var $parsedForm;
+    private $parsedForm;
   
     /**
      * 送信先動的変更のための送信先情報
-     * @var array
+     * @private array
      */
-    var $dynamic_send_to = array();
+    private $dynamic_send_to = array();
   
     /**
      * バージョン番号
-     * @var string
+     * @public string
      */
-    var $version = '1.3';
+    public $version = '1.4';
 
-    var $lf = "\n";
+    private $lf = "\n";
 
     /**
      * コンストラクタ
@@ -86,7 +86,7 @@ class Class_cfFormMailer {
      * @param  string $mode 現在のモード(input / conf / comp / error / return)
      * @return string HTML文書
      */
-    function createPageHtml($mode) {
+    public function createPageHtml($mode) {
 
         // ページテンプレート読み込み
         switch ($mode) {
@@ -222,7 +222,7 @@ class Class_cfFormMailer {
         return $html;
     }
 
-    function getToken() {
+    private function getToken() {
         return base_convert(crc32(str_shuffle(uniqid())),10,36);
     }
     
@@ -233,7 +233,7 @@ class Class_cfFormMailer {
     * @param  void
     * @return boolean result
     */
-    function validate() {
+    public function validate() {
         $this->formError = array();
 
         // 検証メソッドを取得
@@ -307,7 +307,7 @@ class Class_cfFormMailer {
     * @param  array  $params 再現する値の配列
     * @return void
     */
-    function restoreForm($html, $params) {
+    private function restoreForm($html, $params) {
 
         preg_match_all("@<(input|textarea|select)(.+?)([\s/]*?)>(.*?</\\1>)?@ism", $html, $match, PREG_SET_ORDER);
 
@@ -398,7 +398,7 @@ class Class_cfFormMailer {
     * @param  void
     * @return boolean 結果 
     */
-    function sendMail() {
+    public function sendMail() {
 
         // send_mail環境設定が0の場合は送信しない
         if (defined('SEND_MAIL') && !SEND_MAIL) {
@@ -600,30 +600,13 @@ class Class_cfFormMailer {
     }
 
     /**
-    * mb_encode_mimeheaderのバグ対策
-    *
-    * @See http://www.php.net/manual/ja/function.mb-encode-mimeheader.php#34532
-    */
-    function _encodeMimeHeader($text, $encode = 'iso-2022-jp', $flag = true) {
-        $pos = 0;
-        $split = 14;  // ( 76byte - header20byte ) / 133% / 3byte
-        $_string = '';
-        while ($pos < mb_strlen($text, CHARSET)) {
-            $output = mb_strimwidth($text, $pos, $split, '', CHARSET);
-            $pos += mb_strlen($output, CHARSET);
-            $_string .= (($_string) && $flag ? $this->lf . ' ' : (!$flag ? ' ' : '')) . "=?{$encode}?B?" . base64_encode(mb_convert_encoding($output, $encode, CHARSET)) . '?=';
-        }
-        return $_string;
-    }
-
-    /**
     * トークンをチェック
     * 
     * @access public
     * @param  void
     * @return boolean 結果
     */
-    function isValidToken() {
+    public function isValidToken() {
         $token = @$_SESSION['_cffm_token'];
         unset($_SESSION['_cffm_token']);
         return ($token == $_POST['_cffm_token']);
@@ -636,8 +619,8 @@ class Class_cfFormMailer {
     * @param  void
     * @return boolean 結果
     */
-    function isMultiple() {
-    return ($this->form === $_SESSION['_cffm_recently_send']);
+    public function isMultiple() {
+        return ($this->form === $_SESSION['_cffm_recently_send']);
     }
 
     /**
@@ -648,7 +631,7 @@ class Class_cfFormMailer {
     * @param  array  $errors error messages
     * @return string HTML text after substitution
     */
-    function assignErrorTag($html, $errors) {
+    private function assignErrorTag($html, $errors) {
         if (!is_array($errors)) {
             return $html;
         }
@@ -691,7 +674,7 @@ class Class_cfFormMailer {
     * @param array  $errors フォームエラーメッセージ
     * @return string 処理後のHTML文書
     */
-    function assignErrorClass($html, $errors) {
+    private function assignErrorClass($html, $errors) {
         if (!defined('INVALID_CLASS') || INVALID_CLASS == '') return $html;
 
         if (count($errors) < 2) return $html;
@@ -727,7 +710,7 @@ class Class_cfFormMailer {
     * @param  mixed $text 変換するテキスト
     * @return mixed 変換後のテキスト
     */
-    function convertText($text) {
+    private function convertText($text) {
         if (is_array($text)) {
             foreach ($text as $k => $v) {
                 $text[$k] = $this->convertText($v);
@@ -745,7 +728,7 @@ class Class_cfFormMailer {
     * @param  string 変換するテキスト
     * @return string 変換後のテキスト 
     */
-    function adaptEncoding($text) {
+    private function adaptEncoding($text) {
         if (is_array($text)) {
             $text = array_map($this->adaptEncoding, $text);
         } elseif (strtolower(CHARSET) != 'utf-8') {
@@ -762,7 +745,7 @@ class Class_cfFormMailer {
     * @param  boolean $nl2br TRUE の場合、改行コードを<br />に変換　（Default: FALSE）
     * @return mixed 変換後のテキストまたは配列
     */
-    function encodeHTML($text, $nl2br = '') {
+    private function encodeHTML($text, $nl2br = '') {
         if (is_array($text)) {
             foreach ($text as $k => $v) {
                 $text[$k] = $this->encodeHTML($v, $nl2br);
@@ -859,7 +842,7 @@ class Class_cfFormMailer {
     * @param mixed $text 変換するテキスト（または配列）
     * @return mixed 変換後のテキストまたは配列 
     */
-    function nl2br_array($text) {
+    public function nl2br_array($text) {
         if (is_array($text)) {
             $text = array_map(array($this, 'nl2br_array'), $text);
         } else {
@@ -875,7 +858,7 @@ class Class_cfFormMailer {
     * @param  string $name チャンク名・またはリソースID
     * @return string 読み込んだデータ
     */
-    function loadTemplate($name) {
+    private function loadTemplate($name) {
         if (preg_match('/^[1-9][0-9]*$/', $name)) {
             $html = ($resource = $this->modx->getDocumentObject('id', $name)) ? $resource['content'] : false; // thanks to yama
         } else {
@@ -901,7 +884,7 @@ class Class_cfFormMailer {
     * @param  string $join 値が配列の場合に連結に使用する文字列
     * @return string プレースホルダが置換された文字列
     */
-    function replacePlaceHolder($text, $params, $join = '<br />') {
+    private function replacePlaceHolder($text, $params, $join = '<br />') {
         global $modx;
 
         if (!is_array($params) || !$text) return false;
@@ -965,7 +948,7 @@ class Class_cfFormMailer {
     * @param string $text 対象となるHTML
     * @return string [+variable_name+]削除後のHTML
     */
-    function clearPlaceHolder($text) {
+    private function clearPlaceHolder($text) {
         return preg_replace("/\[\+.+?\+\]/ism", '', $text);
     }
 
@@ -976,7 +959,7 @@ class Class_cfFormMailer {
     * @param string $string 変換される文字列(Default: &nbsp;)
     * @return mixed 変換後のデータ
     */
-    function convertNullToStr($data, $string = '&nbsp;') {
+    private function convertNullToStr($data, $string = '&nbsp;') {
         if (is_array($data)) {
             foreach ($data as $k => $v) {
                 $data[$k] = $this->convertNullToStr($v, $string);
@@ -994,7 +977,7 @@ class Class_cfFormMailer {
     * @param void
     * @return string 認証コード画像の URI
     */
-    function getCaptchaUri() {
+    private function getCaptchaUri() {
         if(is_file($this->modx->config['base_path'] . 'captcha.php')) {
             $captchalib = 'captcha.php';
         }
@@ -1015,7 +998,7 @@ class Class_cfFormMailer {
     * @param  array  $form 埋め込むデータ
     * @return string 埋め込み後のHTML文書
     */
-    function addHiddenTags($html, $form) {
+    private function addHiddenTags($html, $form) {
         if (!is_array($form)) return $html;
         if (isset($form['_mode'])) unset($form['_mode']);
         $tag = array();
@@ -1038,7 +1021,7 @@ class Class_cfFormMailer {
     * @param  array $array データ 
     * @return array 初期処理の終わったデータ
     */
-    function getFormVariables($array) {
+    private function getFormVariables($array) {
 
         if (!is_array($array)) return;
 
@@ -1067,7 +1050,7 @@ class Class_cfFormMailer {
     * @param  string $html 解析対象のHTML文書
     * @return boolean 解析失敗の場合は false
     */
-    function parseForm($html) {
+    private function parseForm($html) {
         $html = $this->extractForm($html, '');
         if ($html === false) {
             return false;
@@ -1148,7 +1131,7 @@ class Class_cfFormMailer {
     * @param string $id   抽出対象のフォームID
     * @return mixed 抽出されたHTML文書（失敗の場合は FALSE）
     */
-    function extractForm($html, $id = '') {
+    private function extractForm($html, $id = '') {
         if (preg_match("@<form.+?>([\S\s]+)</form>@m", $html, $match_form)) {
             $ret = $match_form[1];
         } else {
@@ -1165,7 +1148,7 @@ class Class_cfFormMailer {
     * @param  void
     * @return void
     */
-    function storeDataInSession() {
+    public function storeDataInSession() {
         $_SESSION['_cffm_recently_send'] = array();
         foreach ($this->form as $k => $v) {
             if ($k != '_mode' && $k != '_cffm_token') {
@@ -1182,7 +1165,7 @@ class Class_cfFormMailer {
     * @param  string $mes メッセージ
     * @return void
     */
-    function setError($mes) {
+    private function setError($mes) {
         $this->error_message = $mes;
         return;
     }
@@ -1194,7 +1177,7 @@ class Class_cfFormMailer {
     * @param  void
     * @return string 取得したメッセージ
     */
-    function getError() {
+    public function getError() {
         return $this->convertText($this->error_message);
     }
 
@@ -1207,7 +1190,7 @@ class Class_cfFormMailer {
     * @param  string $message 割り当てるメッセージ
     * @return void
     */
-    function setFormError($field, $label, $message) {
+    private function setFormError($field, $label, $message) {
         $this->formError[$field][] = array('label' => $label, 'text' => $message);
         return true;
     }
@@ -1218,7 +1201,7 @@ class Class_cfFormMailer {
     * @access public
     * @return array 取得したメッセージ（プレースホルダ用に整形。個別用の error.field_name と 一括用の errors の両方が返される）
     */
-    function getFormError() {
+    public function getFormError() {
         if (count($this->formError) < 1) {
             return array();
         }
@@ -1241,7 +1224,7 @@ class Class_cfFormMailer {
     * @param  boolean $ifDie TRUE の場合、プロセス終了
     * @return void
     */
-    function raiseError($mes, $ifDie = false) {
+    public function raiseError($mes, $ifDie = false) {
         return sprintf('<p style="color:#cc0000;background:#fff;font-weight:bold;">SYSTEM ERROR::%s</p>', $mes);
     }
 
@@ -1250,7 +1233,7 @@ class Class_cfFormMailer {
     * 
     * @return string バージョン番号
     */
-    function getVersion() {
+    public function getVersion() {
         return $this->version;
     }
 
@@ -1259,7 +1242,7 @@ class Class_cfFormMailer {
     *
     * @return string メールアドレス
     */
-    function getAutoReplyAddress() {
+    private function getAutoReplyAddress() {
         if (!AUTO_REPLY) return '';
         $reply_to = '';
         $tmp = explode('+', REPLY_TO);
@@ -1277,7 +1260,7 @@ class Class_cfFormMailer {
     * @param string $addr チェックするメールアドレス
     * @return boolean 結果
     */
-    function _isValidEmail($addr) {
+    private function _isValidEmail($addr) {
         return preg_match("/^(?:[a-z0-9+_-]+?\.)*?[a-z0-9_+-]+?@(?:[a-z0-9_-]+?\.)*?[a-z0-9_-]+?\.[a-z0-9]{2,5}$/i", $addr);
     }
 
@@ -1289,7 +1272,7 @@ class Class_cfFormMailer {
     * @param string  $field  アップロードされたフィールド名
     * @return string MIMEタイプ。失敗の場合は false 
     */
-    function _getMimeType($filename, $field = '') {
+    private function _getMimeType($filename, $field = '') {
         $mime = false;
         if (class_exists('upload')) {
             // class.upload.php使用
@@ -1317,7 +1300,7 @@ class Class_cfFormMailer {
     * @param string  MIMEタイプ
     * @return  string  タイプ
     */
-    function _getType($mime) {
+    private function _getType($mime) {
         $mime_list = array(
             'image/gif'   => 'gif',
             'image/jpeg'  => 'jpg',
@@ -1337,7 +1320,7 @@ class Class_cfFormMailer {
     * @param string $config_name 環境設定チャンク名 
     * @return mixed true || エラーメッセージ
     */
-    function parseConfig($config_name) {
+    public function parseConfig($config_name) {
         $conf = $this->loadTemplate($config_name);
         if (!$conf) return '環境設定チャンクの読み込みに失敗しました!';
 
@@ -1397,7 +1380,7 @@ class Class_cfFormMailer {
     * 
     * @access public
     */
-    function storeDB() {
+    public function storeDB() {
         if (!defined('USE_STORE_DB') || !USE_STORE_DB) {
             return true;
         }
@@ -1431,7 +1414,7 @@ class Class_cfFormMailer {
     * テーブルの存在確認
     * @access private
     */
-    function ifTableExists() {
+    private function ifTableExists() {
         $sql = 'SHOW TABLES FROM ' . $this->modx->db->config['dbase'] . " LIKE '%cfformdb%'";
         if ($rs = $this->modx->db->query($sql)) {
             if ($this->modx->db->getRecordCount($rs) == 2) {
@@ -1448,7 +1431,7 @@ class Class_cfFormMailer {
     /**
     * num : 数値？
     */
-    function _def_num($value, $param, $field) {
+    private function _def_num($value, $param, $field) {
         // 強制的に半角に変換します。
         $this->form[$field] = mb_convert_kana($this->form[$field], 'n', CHARSET);
         return (is_numeric($this->form[$field])) ? true : '半角数字で入力してください';
@@ -1457,7 +1440,7 @@ class Class_cfFormMailer {
     /**
     * email : 正しいメールアドレス形式か？
     */
-    function _def_email($value, $param, $field) {
+    private function _def_email($value, $param, $field) {
         // 強制的に半角に変換します。
         $this->form[$field] = mb_convert_kana($this->form[$field], 'a', CHARSET);
         return $this->_isValidEmail($this->form[$field]) ? true : 'メールアドレスの形式が正しくありません';
@@ -1466,7 +1449,7 @@ class Class_cfFormMailer {
     /**
     * len(min, max) : 文字数チェック
     */
-    function _def_len($value, $param, $field) {
+    private function _def_len($value, $param, $field) {
 
         if (!preg_match("/([0-9]+)?(\-)?([0-9]+)?/", $param, $match)) return true;
 
@@ -1495,7 +1478,7 @@ class Class_cfFormMailer {
     * vericode : CAPTCHA による認証チェック
     *   Added in v0.0.5
     */
-    function _def_vericode($value, $param, $field) {
+    private function _def_vericode($value, $param, $field) {
         if (!VERICODE) return true;
         if ($_SESSION['veriword'] == $value) {
             return true;
@@ -1509,7 +1492,7 @@ class Class_cfFormMailer {
     * range(min, max) : 値範囲チェック
     *   Added in v0.0.5
     */
-    function _def_range($value, $param, $field) {
+    private function _def_range($value, $param, $field) {
         $err = 0;
         if (preg_match("/([0-9-]+)?(~)?([0-9-]+)?/", $param, $match)) {
             if ($match[1] && !$match[2] && !$match[3]) {
@@ -1530,7 +1513,7 @@ class Class_cfFormMailer {
     * sameas(field) : 同一確認
     *   Added in v0.0.6
     */
-    function _def_sameas($value, $param, $field) {
+    private function _def_sameas($value, $param, $field) {
         if ($value == $this->form[$param]) {
             return true;
         } else {
@@ -1543,7 +1526,7 @@ class Class_cfFormMailer {
     * tel : 電話番号？
     *   Added in v0.0.7
     */
-    function _def_tel($value, $param, $field) {
+    private function _def_tel($value, $param, $field) {
         // 強制的に半角に変換します。
         $this->form[$field] = mb_convert_kana($this->form[$field], 'a', CHARSET);
         $checkLen = (substr($this->form[$field],0,1)=='0') ? 10 : 5;
@@ -1555,7 +1538,7 @@ class Class_cfFormMailer {
     * tel : 郵便番号
     *   Added in v1.3.x
     */
-    function _def_zip($value, $param, $field) {
+    private function _def_zip($value, $param, $field) {
         // 強制的に半角に変換します。
         $this->form[$field] = mb_convert_kana($this->form[$field], 'as', CHARSET);
         $this->form[$field] = preg_replace('/[^0-9]/','',$this->form[$field]);
@@ -1571,7 +1554,7 @@ class Class_cfFormMailer {
     * allowtype(type) : アップロードを許可するファイル形式
     *   Added in v1.0
     */
-    function _def_allowtype($value, $param, $field) {
+    private function _def_allowtype($value, $param, $field) {
         $flag = true;
         if (!isset($_FILES[$field]['tmp_name']) || empty($_FILES[$field]['tmp_name']) || !is_uploaded_file($_FILES[$field]['tmp_name'])) {
             return true;
@@ -1595,7 +1578,7 @@ class Class_cfFormMailer {
     * allowsize(size) : アップロードを許可する最大ファイルサイズ
     *   Added in v1.0
     */
-    function _def_allowsize($value, $param, $field) {
+    private function _def_allowsize($value, $param, $field) {
         if (!isset($_FILES[$field]['tmp_name']) || empty($_FILES[$field]['tmp_name']) || !is_uploaded_file($_FILES[$field]['tmp_name'])) {
             return true;
         }
@@ -1615,7 +1598,7 @@ class Class_cfFormMailer {
     *   See: http://jp2.php.net/manual/ja/function.mb-convert-kana.php
     *   Added in v1.2
     */
-    function _def_convert($value, $param, $field) {
+    private function _def_convert($value, $param, $field) {
         if (!$param) {
             $param = 'K';
         }
@@ -1627,7 +1610,7 @@ class Class_cfFormMailer {
     * url(string)：URL値検証
     *   Added in v1.2
     */
-    function _def_url($value, $param, $field) {
+    private function _def_url($value, $param, $field) {
         return preg_match("@^https?://.+\..+@", $value);
     }
 
@@ -1639,14 +1622,14 @@ class Class_cfFormMailer {
     /**
     * implode : 文字列結合
     */
-    function _f_implode($text, $param) {
+    private function _f_implode($text, $param) {
         return (is_array($text)) ? implode(str_replace("\\n", "\n", $param), $text) : $text;
     }
 
     /**
     * implodetag(tag) : HTMLタグで文字列結合
     */
-    function _f_implodetag($text, $param) {
+    private function _f_implodetag($text, $param) {
         if (!is_array($text)) $text = array($text);
         $ret = '';
         foreach ($text as $v) {
@@ -1658,21 +1641,21 @@ class Class_cfFormMailer {
     /**
     * num : 数値のフォーマット （※PHP関数 number_format() と同様）
     */
-    function _f_num($text, $param) {
+    private function _f_num($text, $param) {
         return (is_array($text)) ? array_map($this->_f_num, $text, $param) : number_format($text);
     }
 
     /**
     * dateformat(format) : 日付のフォーマット （※PHP関数 strftime() と同様）
     */
-    function _f_dateformat($text, $param) {
+    private function _f_dateformat($text, $param) {
         return (is_array($text)) ? array_map($this->_f_dateformat, $text, $param) : strftime($param, strtotime($text));
     }
 
     /**
     * sprintf(format) : テキストのフォーマット （※PHP関数 sprintf() と同様）
     */
-    function _f_sprintf($text, $param) {
+    private function _f_sprintf($text, $param) {
         return (is_array($text)) ? array_map($this->_f_sprintf, $text, $param) : sprintf($param, $text);
     }
 }
