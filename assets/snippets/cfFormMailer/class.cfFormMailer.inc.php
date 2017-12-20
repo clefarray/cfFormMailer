@@ -12,6 +12,8 @@
 
 class Class_cfFormMailer {
 
+    public $cfg = array();
+
     /**
      * modxオブジェクト
      */
@@ -729,9 +731,12 @@ class Class_cfFormMailer {
     * @return string 変換後のテキスト 
     */
     private function adaptEncoding($text) {
+        
+        if (strtolower(CHARSET) == 'utf-8') return $text;
+
         if (is_array($text)) {
             $text = array_map($this->adaptEncoding, $text);
-        } elseif (strtolower(CHARSET) != 'utf-8') {
+        } else {
             $text = mb_convert_encoding($text, 'utf-8', CHARSET);
         }
         return $text;
@@ -1324,6 +1329,7 @@ class Class_cfFormMailer {
         $conf = $this->loadTemplate($config_name);
         if (!$conf) return '環境設定チャンクの読み込みに失敗しました!';
 
+        $conf = $this->adaptEncoding($conf);
         $conf = strtr($conf, array("\r\n" => "\n", "\r" => "\n"));
         $conf_arr = explode("\n", $conf);
         foreach ($conf_arr as $line) {
@@ -1333,44 +1339,41 @@ class Class_cfFormMailer {
 
             list($key, $val) = explode('=', $line, 2);
 
-            // UTF-8 以外の文字コードを変換
-            if (strpos($key, 'subject') !== false) $val = $this->adaptEncoding($val);
-            if (strpos($key, 'name') !== false)    $val = $this->adaptEncoding($val);
-
             $key = trim($key);
             if(!$key) continue;
-            $params[$key] = trim($val);
+            $cfg[$key] = trim($val);
         }
 
         // 必須項目チェック
         $err = array();
-        if (!$params['tmpl_input']) $err[] = '`入力画面テンプレート`を指定してください';
-        if (!$params['tmpl_conf'])  $err[] = '`確認画面テンプレート`を指定してください';
-        if (!$params['tmpl_comp'] && !$params['complete_redirect'])
+        if (!$cfg['tmpl_input']) $err[] = '`入力画面テンプレート`を指定してください';
+        if (!$cfg['tmpl_conf'])  $err[] = '`確認画面テンプレート`を指定してください';
+        if (!$cfg['tmpl_comp'] && !$cfg['complete_redirect'])
         $err[] = '`完了画面テンプレート`または`送信後遷移する完了画面リソースID`を指定してください';
 
-        if (!$params['tmpl_mail_admin']) $err[] = '`管理者宛メールテンプレート`を指定してください';
-        if ($params['auto_reply'] && !$params['tmpl_mail_reply']) $err[] = '`自動返信メールテンプレート`を指定してください';
+        if (!$cfg['tmpl_mail_admin']) $err[] = '`管理者宛メールテンプレート`を指定してください';
+        if ($cfg['auto_reply'] && !$cfg['tmpl_mail_reply']) $err[] = '`自動返信メールテンプレート`を指定してください';
 
         if ($err) {
             return join('<br />', $this->convertText($err));
         }
 
         // 値の指定が無い場合はデフォルト値を設定
-        if (!$params['admin_mail'])     $params['admin_mail']     = $this->modx->config['emailsender'];
-        if (!$params['auto_reply'])     $params['auto_reply']     = 0;
-        if (!$params['reply_to'])       $params['reply_to']       = 'email';
-        if (!$params['reply_fromname']) $params['reply_fromname'] = $this->modx->config['site_name'];
+        if (!$cfg['admin_mail'])     $cfg['admin_mail']     = $this->modx->config['emailsender'];
+        if (!$cfg['auto_reply'])     $cfg['auto_reply']     = 0;
+        if (!$cfg['reply_to'])       $cfg['reply_to']       = 'email';
+        if (!$cfg['reply_fromname']) $cfg['reply_fromname'] = $this->modx->config['site_name'];
 
-        if (!$params['vericode'])       $params['vericode']     = 0;
-        if (!$params['admin_ishtml'])   $params['admin_ishtml'] = 0;
-        if (!$params['reply_ishtml'])   $params['reply_ishtml'] = 0;
-        if (!$params['allow_html'])     $params['allow_html']   = 0;
+        if (!$cfg['vericode'])       $cfg['vericode']     = 0;
+        if (!$cfg['admin_ishtml'])   $cfg['admin_ishtml'] = 0;
+        if (!$cfg['reply_ishtml'])   $cfg['reply_ishtml'] = 0;
+        if (!$cfg['allow_html'])     $cfg['allow_html']   = 0;
 
         // 定数として設定
-        foreach ($params as $key => $value) {
+        foreach ($cfg as $key => $value) {
             define(strtoupper($key), $value);
         }
+        $this->cfg = $cfg;
         return true;
     }
 
