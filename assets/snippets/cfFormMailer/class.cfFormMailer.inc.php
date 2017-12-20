@@ -200,14 +200,9 @@ class Class_cfFormMailer {
                 $html = $this->addHiddenTags($html, $this->form);
 
                 // ワンタイムトークンを生成
-                list($usec, $sec) = explode(' ', microtime());
-                mt_srand((float) $sec + ((float) $usec * 100000) + getmypid());
-                $tmp_time = gettimeofday();
-                $tmp_value = mt_rand() . $tmp_time['usec'] . mt_rand(0, time());
-                $token = md5($tmp_value);
-                $ticket = sha1($token);
+                $token = $this->getToken();
                 $_SESSION['_cffm_token'] = $token;
-                $html = str_ireplace('</form>', '<input type="hidden" name="_ticket" value="' . $ticket . '" />' . "\n</form>", $html);
+                $html = str_ireplace('</form>', '<input type="hidden" name="_cffm_token" value="' . $token . '" />' . "\n</form>", $html);
                 break;
             case 'comp':
                 $nextMode = '';
@@ -227,6 +222,10 @@ class Class_cfFormMailer {
         return $html;
     }
 
+    function getToken() {
+        return base_convert(crc32(str_shuffle(uniqid())),10,36);
+    }
+    
     /**
     * 入力値を検証
     *
@@ -625,7 +624,7 @@ class Class_cfFormMailer {
     function isValidToken() {
         $token = @$_SESSION['_cffm_token'];
         unset($_SESSION['_cffm_token']);
-        return (sha1($token) == $_POST['_ticket']);
+        return ($token == $_POST['_cffm_token']);
     }
 
     /**
@@ -1040,7 +1039,7 @@ class Class_cfFormMailer {
 
         $ret = array();
         foreach ($array as $k => $v) {
-            if (!is_int($k) && ($k == '_mode' || $k == '_ticket')) continue;
+            if (!is_int($k) && ($k == '_mode' || $k == '_cffm_token')) continue;
             if (is_array($v)) {
                 $v = $this->getFormVariables($v);
             } else {
@@ -1164,7 +1163,7 @@ class Class_cfFormMailer {
     function storeDataInSession() {
         $_SESSION['_cffm_recently_send'] = array();
         foreach ($this->form as $k => $v) {
-            if ($k != '_mode' && $k != '_ticket') {
+            if ($k != '_mode' && $k != '_cffm_token') {
                 $_SESSION['_cffm_recently_send'][$k] = $v;
             }
         }
