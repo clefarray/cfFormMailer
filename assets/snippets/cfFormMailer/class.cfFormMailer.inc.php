@@ -308,6 +308,7 @@ class Class_cfFormMailer {
     * @return void
     */
     function restoreForm($html, $params) {
+
         preg_match_all("@<(input|textarea|select)(.+?)([\s/]*?)>(.*?</\\1>)?@ism", $html, $match, PREG_SET_ORDER);
 
         // タグごとに処理
@@ -432,6 +433,7 @@ class Class_cfFormMailer {
         } else {
             $mails = explode(',', ADMIN_MAIL);
         }
+
         foreach ($mails as $buf) {
             $buf = trim($buf);
             if ($this->_isValidEmail($buf)) {
@@ -647,31 +649,34 @@ class Class_cfFormMailer {
     * @return string HTML text after substitution
     */
     function assignErrorTag($html, $errors) {
-        if (!is_array($errors)) {return $html;}
+        if (!is_array($errors)) {
+            return $html;
+        }
         preg_match_all("@<iferror\.?([^>]+?)?>(.+?)</iferror>@ism", $html, $match, PREG_SET_ORDER);
-        if (count($match)) {
-            foreach ($match as $tag) {
-                if (!empty($tag[1])) {
-                    // グルーピングされたタグの処理
-                    if (preg_match("/^\((.+?)\)$/", $tag[1], $g_match)) {
-                        $groups = explode(',', $g_match[1]);
-                        $isErr = 0;
-                        foreach($groups as $group) {
-                            $group = strtr($group, array(' ' => ''));
-                            $isErr = ($errors['error.' . $group]) ? 1 : $isErr;
-                        }
-                        if ($isErr) {
-                            $html = str_replace($tag[0], $tag[2], $html);
-                        }
-                        // 個別タグの処理
-                        } elseif (isset($errors['error.' . $tag[1]])) {
-                            $html = str_replace($tag[0], $tag[2], $html);
-                        }
-                    } else {
-                    // エラー全体の処理
-                    if (count($errors)) {
+
+        if (!count($match)) return $html;
+
+        foreach ($match as $tag) {
+            if (!empty($tag[1])) {
+                // グルーピングされたタグの処理
+                if (preg_match("/^\((.+?)\)$/", $tag[1], $g_match)) {
+                    $groups = explode(',', $g_match[1]);
+                    $isErr = 0;
+                    foreach($groups as $group) {
+                        $group = strtr($group, array(' ' => ''));
+                        $isErr = ($errors['error.' . $group]) ? 1 : $isErr;
+                    }
+                    if ($isErr) {
                         $html = str_replace($tag[0], $tag[2], $html);
                     }
+                    // 個別タグの処理
+                    } elseif (isset($errors['error.' . $tag[1]])) {
+                        $html = str_replace($tag[0], $tag[2], $html);
+                    }
+                } else {
+                // エラー全体の処理
+                if (count($errors)) {
+                    $html = str_replace($tag[0], $tag[2], $html);
                 }
             }
         }
@@ -689,26 +694,26 @@ class Class_cfFormMailer {
     function assignErrorClass($html, $errors) {
         if (!defined('INVALID_CLASS') || INVALID_CLASS == '') return $html;
 
-        if (count($errors) > 1) {
-            // エラーのあるフィールド名リストを作成
-            if (isset($errors['errors'])) unset($errors['errors']);
-            $keys = array_unique(array_keys($errors));
-            $keys = array_map(create_function('$a', 'return str_replace("error.", "", $a);'), $keys);
+        if (count($errors) < 2) return $html;
 
-            foreach ($keys as $field) {
-                $pattern = "#<(input|textarea|select)[^>]*?name=(\"|\'){$field}\\2[^/>]*/?>#im";
-                if (preg_match_all($pattern, $html, $match, PREG_SET_ORDER)) {
-                    foreach ($match as $m) {
-                        // クラスを定義済みの場合は最後に追加
-                        if (preg_match("/class=(\"|\')(.+?)\\1/", $m[0], $match_classes)) {
-                            $newClass = 'class=' . $match_classes[1] . $match_classes[2] . ' ' . INVALID_CLASS . $match_classes[1];
-                            $rep = str_replace($match_classes[0], $newClass, $m[0]);
-                            // そうでなければ class 要素を追加
-                        } else {
-                            $rep = preg_replace("#\s*/?>$#", '', $m[0]) . ' class="' . INVALID_CLASS .'"' . ($m[1] == 'input' ? ' /' : '') . '>';
-                        }
-                        $html = str_replace($m[0], $rep, $html);
+        // エラーのあるフィールド名リストを作成
+        if (isset($errors['errors'])) unset($errors['errors']);
+        $keys = array_unique(array_keys($errors));
+        $keys = array_map(create_function('$a', 'return str_replace("error.", "", $a);'), $keys);
+
+        foreach ($keys as $field) {
+            $pattern = "#<(input|textarea|select)[^>]*?name=(\"|\'){$field}\\2[^/>]*/?>#im";
+            if (preg_match_all($pattern, $html, $match, PREG_SET_ORDER)) {
+                foreach ($match as $m) {
+                    // クラスを定義済みの場合は最後に追加
+                    if (preg_match("/class=(\"|\')(.+?)\\1/", $m[0], $match_classes)) {
+                        $newClass = 'class=' . $match_classes[1] . $match_classes[2] . ' ' . INVALID_CLASS . $match_classes[1];
+                        $rep = str_replace($match_classes[0], $newClass, $m[0]);
+                        // そうでなければ class 要素を追加
+                    } else {
+                        $rep = preg_replace("#\s*/?>$#", '', $m[0]) . sprintf(' class="%s"', INVALID_CLASS) . ($m[1] == 'input' ? ' /' : '') . '>';
                     }
+                    $html = str_replace($m[0], $rep, $html);
                 }
             }
         }
@@ -727,7 +732,7 @@ class Class_cfFormMailer {
             foreach ($text as $k => $v) {
                 $text[$k] = $this->convertText($v);
             }
-            } elseif (strtolower(CHARSET) != 'utf-8') {
+        } elseif (strtolower(CHARSET) != 'utf-8') {
             $text = mb_convert_encoding($text, CHARSET, 'utf-8');
         }
         return $text;
@@ -741,12 +746,12 @@ class Class_cfFormMailer {
     * @return string 変換後のテキスト 
     */
     function adaptEncoding($text) {
-    if (is_array($text)) {
-        $text = array_map($this->adaptEncoding, $text);
-    } elseif (strtolower(CHARSET) != 'utf-8') {
-        $text = mb_convert_encoding($text, 'utf-8', CHARSET);
-    }
-    return $text;
+        if (is_array($text)) {
+            $text = array_map($this->adaptEncoding, $text);
+        } elseif (strtolower(CHARSET) != 'utf-8') {
+            $text = mb_convert_encoding($text, 'utf-8', CHARSET);
+        }
+        return $text;
     }
 
     /**
@@ -1237,7 +1242,7 @@ class Class_cfFormMailer {
     * @return void
     */
     function raiseError($mes, $ifDie = false) {
-        return '<p style="color:#cc0000;background:#fff;font-weight:bold;">SYSTEM ERROR::'. $mes . '</p>';
+        return sprintf('<p style="color:#cc0000;background:#fff;font-weight:bold;">SYSTEM ERROR::%s</p>', $mes);
     }
 
     /**
