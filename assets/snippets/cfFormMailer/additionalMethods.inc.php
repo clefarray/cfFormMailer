@@ -10,7 +10,7 @@
 /* 例 ----
 // 正しい郵便番号かどうかを検証
 function _validate_postcode($data, $param) {
-  return preg_match("/\d{3}\-\d{4}/", $data) ? TRUE : '郵便番号が正しくありません';
+    return preg_match("/\d{3}\-\d{4}/", $data) ? TRUE : '郵便番号が正しくありません';
 }
 ---- */
 
@@ -29,7 +29,7 @@ function _validate_postcode($data, $param) {
 /* 例 ----
 // カナ変換 [+field|kana(ka)+]
 function _filter_kana($text, $param) {
-  return mb_convert_kana($text, $param);
+    return mb_convert_kana($text, $param);
 }
 ---- */
 
