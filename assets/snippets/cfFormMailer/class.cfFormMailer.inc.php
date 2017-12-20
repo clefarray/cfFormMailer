@@ -216,7 +216,7 @@ class Class_cfFormMailer {
         }
 
         // 余った<iferror>タグ、プレースホルダを削除
-        $html = preg_replace("/<iferror.*?>.+?<\/iferror>/ism", '', $html);
+        $html = preg_replace("@<iferror.*?>.+?</iferror>@ism", '', $html);
         $html = $this->clearPlaceHolder($html);
 
         // 次の処理名をフォームに付記
@@ -309,7 +309,7 @@ class Class_cfFormMailer {
     * @return void
     */
     function restoreForm($html, $params) {
-        preg_match_all("/<(input|textarea|select)(.+?)([\s\/]*?)>(.*?<\/\\1>)?/ism", $html, $match, PREG_SET_ORDER);
+        preg_match_all("@<(input|textarea|select)(.+?)([\s/]*?)>(.*?</\\1>)?@ism", $html, $match, PREG_SET_ORDER);
 
         // タグごとに処理
         foreach ($match as $i => $tag) {
@@ -649,7 +649,7 @@ class Class_cfFormMailer {
     */
     function assignErrorTag($html, $errors) {
         if (!is_array($errors)) {return $html;}
-        preg_match_all("/<iferror\.?([^>]+?)?>(.+?)<\/iferror>/ism", $html, $match, PREG_SET_ORDER);
+        preg_match_all("@<iferror\.?([^>]+?)?>(.+?)</iferror>@ism", $html, $match, PREG_SET_ORDER);
         if (count($match)) {
             foreach ($match as $tag) {
                 if (!empty($tag[1])) {
@@ -1097,7 +1097,7 @@ class Class_cfFormMailer {
             } else {
                 // label を取得  (from v0.0.4)
                 if (preg_match("/id=(\"|\')(.+?)\\1/", $v[0], $l_match)) {
-                    $pattern = "/<label for=(\"|\'){$l_match[2]}\\1.*>(.+?)<\/label>/";
+                    $pattern = "@<label for=(\"|\'){$l_match[2]}\\1.*>(.+?)</label>@";
                     if (preg_match($pattern, $html, $match_label)) {
                         $label = $match_label[2];
                     } else {
@@ -1116,9 +1116,9 @@ class Class_cfFormMailer {
         if (defined('DYNAMIC_SEND_TO_FIELD') && DYNAMIC_SEND_TO_FIELD && isset($methods[DYNAMIC_SEND_TO_FIELD])) {
             $m_options = array();
             if ($methods[DYNAMIC_SEND_TO_FIELD]['type'] == 'select') {
-                preg_match("/<select.*?name=(\"|\')" . DYNAMIC_SEND_TO_FIELD . "\\1.*?>(.+?)<\/select>/ims", $html, $matches);
+                preg_match("@<select.*?name=(\"|\')" . DYNAMIC_SEND_TO_FIELD . "\\1.*?>(.+?)</select>@ims", $html, $matches);
                 if ($matches[2]) {
-                    preg_match_all("/<option.+?<\/option>/ims", $matches[2], $m_options);
+                    preg_match_all("@<option.+?</option>@ims", $matches[2], $m_options);
                 }
             } elseif ($methods[DYNAMIC_SEND_TO_FIELD]['type'] == 'radio') {
                 preg_match_all("/<input.*?name=(\"|\')" . DYNAMIC_SEND_TO_FIELD . "\\1.*?>/im", $html, $m_options);
@@ -1145,7 +1145,7 @@ class Class_cfFormMailer {
     * @return mixed 抽出されたHTML文書（失敗の場合は FALSE）
     */
     function extractForm($html, $id = '') {
-        if (preg_match("/<form.+?>([\S\s]+)<\/form>/m", $html, $match_form)) {
+        if (preg_match("@<form.+?>([\S\s]+)</form>@m", $html, $match_form)) {
             $ret = $match_form[1];
         } else {
             $this->setError('&lt;form&gt;タグが見つかりません');
@@ -1624,7 +1624,7 @@ class Class_cfFormMailer {
     *   Added in v1.2
     */
     function _def_url($value, $param, $field) {
-        return preg_match("/^https?:\/\/.+\..+/", $value);
+        return preg_match("@^https?://.+\..+@", $value);
     }
 
 
