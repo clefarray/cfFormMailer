@@ -95,22 +95,22 @@ class Class_cfFormMailer {
             case 'input':
             case 'error':
             case 'return':
-                $html = $this->loadTemplate(TMPL_INPUT);
+                $html = $this->loadTemplate($this->cfg['tmpl_input']);
                 break;
             case 'conf':
-                $html = $this->loadTemplate(TMPL_CONF);
+                $html = $this->loadTemplate($this->cfg['tmpl_conf']);
             break;
             case 'comp':
-                if (defined('COMPLETE_REDIRECT') && COMPLETE_REDIRECT) {
-                    if (preg_match("/^[1-9][0-9]*$/", COMPLETE_REDIRECT)) {
-                        $url = $this->modx->makeUrl(COMPLETE_REDIRECT);
+                if ($this->cfg['complete_redirect']) {
+                    if (preg_match("/^[1-9][0-9]*$/", $this->cfg['complete_redirect'])) {
+                        $url = $this->modx->makeUrl($this->cfg['complete_redirect']);
                     } else {
-                        $url = COMPLETE_REDIRECT;
+                        $url = $this->cfg['complete_redirect'];
                     }
                     if(isset($_SESSION['_cf_autosave'])) unset($_SESSION['_cf_autosave']);
                     $this->modx->sendRedirect($url);
                 }
-                $html = $this->loadTemplate(TMPL_COMP);
+                $html = $this->loadTemplate($this->cfg['tmpl_comp']);
                 break;
             default:
                 return false;
@@ -132,7 +132,7 @@ class Class_cfFormMailer {
                 $nextMode = 'conf';
 
                 // CAPTCHA  # Added in v0.0.5
-                if (VERICODE) {
+                if ($this->cfg['vericode']) {
                     $captcha_uri = $this->getCaptchaUri();
                     $html = $this->replacePlaceHolder($html, array('verimageurl' => $captcha_uri));
                 }
@@ -166,16 +166,16 @@ class Class_cfFormMailer {
                 $nextMode = 'send';
                 $values = $this->encodeHTML($this->form, true);
                 $values = $this->convertNullToStr($values, '&nbsp;');
-                if (AUTO_REPLY) $values['reply_to'] = $this->getAutoReplyAddress();
+                if ($this->cfg['auto_reply']) $values['reply_to'] = $this->getAutoReplyAddress();
                 // アップロードファイル関連
                 if (count($_FILES)) {
                     unset($_SESSION['_cf_uploaded']);
                     foreach ($_FILES as $field => $vals) {
-                        if ($_FILES[$field]['error'] == UPLOAD_ERR_OK) {
-                            if (defined('UPLOAD_TMP_PATH') && UPLOAD_TMP_PATH) {
+                        if ($_FILES[$field]['error'] == $this->cfg['upload_err_ok']) {
+                            if ($this->cfg['upload_tmp_path']) {
                                 $new_filepath = $this->modx->config['base_path'] . 'assets/snippets/cfFormMailer/tmp/' . urlencode($_FILES[$field]['name']);
                             } else {
-                                $new_filepath = dirname($_FILES[$field]['tmp_name']) . DIRECTORY_SEPARATOR . urlencode($_FILES[$field]['name']);
+                                $new_filepath = dirname($_FILES[$field]['tmp_name']) . '/' . urlencode($_FILES[$field]['name']);
                             }
                             move_uploaded_file($_FILES[$field]['tmp_name'], $new_filepath);
                             $mime = $this->_getMimeType($new_filepath, $field);
@@ -239,7 +239,7 @@ class Class_cfFormMailer {
         $this->formError = array();
 
         // 検証メソッドを取得
-        if (!$tmp_html = $this->loadTemplate(TMPL_INPUT)) {
+        if (!$tmp_html = $this->loadTemplate($this->cfg['tmpl_input'])) {
             $this->raiseError($this->convertText('入力画面テンプレートの読み込みに失敗しました'));
         }
         if ($this->parseForm($tmp_html) === false) {
@@ -293,7 +293,7 @@ class Class_cfFormMailer {
         }
 
         // 自動返信先メールアドレスをチェック
-        if (AUTO_REPLY) {
+        if ($this->cfg['auto_reply']) {
             if (!$this->_isValidEmail($this->getAutoReplyAddress())) {
                 $this->setFormError('reply_to', 'メールアドレス', '形式が正しくありません');
             }
@@ -403,12 +403,12 @@ class Class_cfFormMailer {
     public function sendMail() {
 
         // send_mail環境設定が0の場合は送信しない
-        if (defined('SEND_MAIL') && !SEND_MAIL) {
+        if (!$this->cfg['send_mail']) {
             return true;
         }
 
         // 改行コードの設定
-        if (defined('LF_STYLE') && LF_STYLE == 1) {
+        if ($this->cfg['lf_style']) {
             $this->lf = "\r\n";
         } else {
             $this->lf = "\n";
@@ -420,7 +420,7 @@ class Class_cfFormMailer {
             $this->setError('フォームが取得できません');return false;
         }
         // 送信メールの文字コード
-        if (defined('MAIL_CHARSET') && MAIL_CHARSET) {
+        if ($this->cfg['mail_charset']) {
             $mailCharset = MAIL_CHARSET;
         } else {
             $mailCharset = 'iso-2022-jp';
@@ -428,12 +428,12 @@ class Class_cfFormMailer {
 
         // 管理者メールアドレス特定
         $admin_addresses = array();
-        if (defined('DYNAMIC_SEND_TO_FIELD') && DYNAMIC_SEND_TO_FIELD && count($this->dynamic_send_to)) {
-            if ($this->form[DYNAMIC_SEND_TO_FIELD]) {
-                $mails = explode(',', $this->dynamic_send_to[$this->form[DYNAMIC_SEND_TO_FIELD]]);
+        if ($this->cfg['dynamic_send_to_field'] && count($this->dynamic_send_to)) {
+            if ($this->form[$this->cfg['dynamic_send_to_field']]) {
+                $mails = explode(',', $this->dynamic_send_to[$this->form[$this->cfg['dynamic_send_to_field']]]);
             }
         } else {
-            $mails = explode(',', ADMIN_MAIL);
+            $mails = explode(',', $this->cfg['admin_mail']);
         }
 
         foreach ($mails as $buf) {
@@ -455,28 +455,28 @@ class Class_cfFormMailer {
 
         $reply_to = $this->getAutoReplyAddress();
 
-        $join = ALLOW_HTML ? '<br />' : "\n";
+        $join = $this->cfg['allow_html'] ? '<br />' : "\n";
 
         // 管理者宛メールの本文生成
-        if (!$tmpl = $this->loadTemplate(TMPL_MAIL_ADMIN)) {
+        if (!$tmpl = $this->loadTemplate($this->cfg['tmpl_mail_admin'])) {
             $this->setError('メールテンプレートの読み込みに失敗しました');
             return false;
         }
         $tmpl = str_replace(array("\r\n", "\r"), "\n", $tmpl);
         $form = $this->form;
-        if (ADMIN_ISHTML) {
-            $form = ALLOW_HTML ? $this->nl2br_array($form) : $this->encodeHTML($form, 'true');
+        if ($this->cfg['admin_ishtml']) {
+            $form = $this->cfg['allow_html'] ? $this->nl2br_array($form) : $this->encodeHTML($form, 'true');
         }
         $tmpl = $this->replacePlaceHolder($tmpl, ($form + $additional), $join);
         $tmpl = $this->clearPlaceHolder($tmpl);
 
         // 自動返信メールの本文生成
-        if (AUTO_REPLY && $reply_to) {
+        if ($this->cfg['auto_reply'] && $reply_to) {
             // モバイル用のテンプレート切り替え
-            if (defined('TMPL_MAIL_REPLY_MOBILE') && TMPL_MAIL_REPLY_MOBILE && preg_match("/(docomo\.ne\.jp|ezweb\.ne\.jp|softbank\.ne\.jp|vodafone\.ne\.jp|disney\.ne\.jp|pdx\.ne\.jp|willcom\.com|emnet\.ne\.jp)$/", $reply_to)) {
-                $template_filename = TMPL_MAIL_REPLY_MOBILE;
+            if ($this->cfg['tmpl_mail_reply_mobile'] && preg_match("/(docomo\.ne\.jp|ezweb\.ne\.jp|softbank\.ne\.jp|vodafone\.ne\.jp|disney\.ne\.jp|pdx\.ne\.jp|willcom\.com|emnet\.ne\.jp)$/", $reply_to)) {
+                $template_filename = $this->cfg['tmpl_mail_reply_mobile'];
             } else {
-                $template_filename = TMPL_MAIL_REPLY;
+                $template_filename = $this->cfg['tmpl_mail_reply'];
             }
             if (!$tmpl_u = $this->loadTemplate($template_filename)) {
                 $this->setError('メールテンプレートの読み込みに失敗しました');
@@ -484,8 +484,8 @@ class Class_cfFormMailer {
             }
             $tmpl_u = str_replace(array("\r\n", "\r"), "\n", $tmpl_u);
             $form_u = $this->form;
-            if (REPLY_ISHTML) {
-                $form_u = ALLOW_HTML ? $this->nl2br_array($form_u) : $this->encodeHTML($form_u, 'true');
+            if ($this->cfg['reply_ishtml']) {
+                $form_u = $this->cfg['allow_html'] ? $this->nl2br_array($form_u) : $this->encodeHTML($form_u, 'true');
             }
             $tmpl_u = $this->replacePlaceHolder($tmpl_u, ($form_u + $additional), $join);
             $tmpl_u = $this->clearPlaceHolder($tmpl_u);
@@ -497,31 +497,31 @@ class Class_cfFormMailer {
         foreach ($admin_addresses as $v) {
             $pm->AddAddress($v);
         }
-        if (defined('ADMIN_MAIL_CC') && ADMIN_MAIL_CC) {
-            foreach (explode(',', ADMIN_MAIL_CC) as $v) {
+        if ($this->cfg['admin_mail_cc']) {
+            foreach (explode(',', $this->cfg['admin_mail_cc']) as $v) {
                 $v = trim($v);
                 if ($this->_isValidEmail($v)) {
                     $pm->AddCC($v);
                 }
             }
         }
-        if (defined('ADMIN_MAIL_BCC') && ADMIN_MAIL_BCC) {
-            foreach (explode(',', ADMIN_MAIL_BCC) as $v) {
+        if ($this->cfg['admin_mail_bcc']) {
+            foreach (explode(',', $this->cfg['admin_mail_bcc']) as $v) {
                 $v = trim($v);
                 if ($this->_isValidEmail($v)) {
                     $pm->AddBCC($v);
                 }
             }
         }
-        $subject = (ADMIN_SUBJECT) ? ADMIN_SUBJECT : 'サイトから送信されたメール';
+        $subject = ($this->cfg['admin_subject']) ? $this->cfg['admin_subject'] : 'サイトから送信されたメール';
         $pm->Subject = $subject;
-        if (defined('ADMIN_NAME') && ADMIN_NAME) {
-            $pm->FromName = $this->modx->parseText(ADMIN_NAME,$this->form);
+        if ($this->cfg['admin_name']) {
+            $pm->FromName = $this->modx->parseText($this->cfg['admin_name'],$this->form);
         } else {
             $pm->FromName = '';
         }
-        //$pm->From = ($reply_to ? $reply_to : ADMIN_MAIL);
-        $pm->From = defined('REPLY_FROM') && REPLY_FROM ? REPLY_FROM : ADMIN_MAIL;  // #通知メールの差出人は自動返信と同様をデフォルトに。
+        //$pm->From = ($reply_to ? $reply_to : $this->cfg['admin_mail']);
+        $pm->From = $this->cfg['reply_from'] ?: $this->cfg['admin_mail'];  // #通知メールの差出人は自動返信と同様をデフォルトに。
         $pm->Sender = $pm->From;
         $pm->Body = mb_convert_encoding($tmpl, $mailCharset, CHARSET);
         $pm->Encoding = '7bit';
@@ -547,26 +547,26 @@ class Class_cfFormMailer {
         }
 
         // 自動返信
-        if (AUTO_REPLY && $reply_to) {
+        if ($this->cfg['auto_reply'] && $reply_to) {
             $this->modx->loadExtension('MODxMailer');
             $pm = &$this->modx->mail;
-            $reply_from = defined('REPLY_FROM') && REPLY_FROM ? REPLY_FROM : $admin_addresses[0];
+            $reply_from = $this->cfg['reply_from'] ?: $admin_addresses[0];
             $this->modx->loadExtension('MODxMailer');
             $pm = &$this->modx->mail;
             $pm->AddAddress($reply_to);
-            $subject = (REPLY_SUBJECT) ? REPLY_SUBJECT : '自動返信メール';
+            $subject = $this->cfg['reply_subject'] ?: '自動返信メール';
             $pm->Subject = $subject;
-            $pm->FromName = REPLY_FROMNAME;
+            $pm->FromName = $this->cfg['reply_fromname'];
             $pm->From = $reply_from;
             $pm->Sender = $reply_from;
             $pm->Body = mb_convert_encoding($tmpl_u, $mailCharset, CHARSET);
             $pm->Encoding = '7bit';
             // 添付ファイル処理
-            if (defined('ATTACH_FILE') && ATTACH_FILE && @file_exists(ATTACH_FILE)) {
-                if (defined('ATTACH_FILE_NAME') && ATTACH_FILE_NAME) {
-                    $pm->AddAttachment(ATTACH_FILE, mb_convert_encoding(ATTACH_FILE_NAME, $mailCharset, CHARSET));
+            if ($this->cfg['attach_file'] && @file_exists($this->cfg['attach_file'])) {
+                if ($this->cfg['attach_file_name']) {
+                    $pm->AddAttachment($this->cfg['attach_file'], mb_convert_encoding($this->cfg['attach_file_name'], $mailCharset, CHARSET));
                 } else {
-                    $pm->AddAttachment(ATTACH_FILE);
+                    $pm->AddAttachment($this->cfg['attach_file']);
                 }
             }
             // ユーザーからのファイル送信
@@ -677,7 +677,7 @@ class Class_cfFormMailer {
     * @return string 処理後のHTML文書
     */
     private function assignErrorClass($html, $errors) {
-        if (!defined('INVALID_CLASS') || INVALID_CLASS == '') return $html;
+        if (!$this->cfg['invalid_class']) return $html;
 
         if (count($errors) < 2) return $html;
 
@@ -692,11 +692,11 @@ class Class_cfFormMailer {
                 foreach ($match as $m) {
                     // クラスを定義済みの場合は最後に追加
                     if (preg_match("/class=(\"|\')(.+?)\\1/", $m[0], $match_classes)) {
-                        $newClass = 'class=' . $match_classes[1] . $match_classes[2] . ' ' . INVALID_CLASS . $match_classes[1];
+                        $newClass = 'class=' . $match_classes[1] . $match_classes[2] . ' ' . $this->cfg['invalid_class'] . $match_classes[1];
                         $rep = str_replace($match_classes[0], $newClass, $m[0]);
                         // そうでなければ class 要素を追加
                     } else {
-                        $rep = preg_replace("#\s*/?>$#", '', $m[0]) . sprintf(' class="%s"', INVALID_CLASS) . ($m[1] == 'input' ? ' /' : '') . '>';
+                        $rep = preg_replace("#\s*/?>$#", '', $m[0]) . sprintf(' class="%s"', $this->cfg['invalid_class']) . ($m[1] == 'input' ? ' /' : '') . '>';
                     }
                     $html = str_replace($m[0], $rep, $html);
                 }
@@ -1105,15 +1105,15 @@ class Class_cfFormMailer {
         $this->parsedForm = $methods;
 
         // 送信先動的変更のためのデータ取得(from v1.3)
-        if (defined('DYNAMIC_SEND_TO_FIELD') && DYNAMIC_SEND_TO_FIELD && isset($methods[DYNAMIC_SEND_TO_FIELD])) {
+        if ($this->cfg['dynamic_send_to_field'] && isset($methods[$this->cfg['dynamic_send_to_field']])) {
             $m_options = array();
-            if ($methods[DYNAMIC_SEND_TO_FIELD]['type'] == 'select') {
-                preg_match("@<select.*?name=(\"|\')" . DYNAMIC_SEND_TO_FIELD . "\\1.*?>(.+?)</select>@ims", $html, $matches);
+            if ($methods[$this->cfg['dynamic_send_to_field']]['type'] == 'select') {
+                preg_match("@<select.*?name=(\"|\')" . $this->cfg['dynamic_send_to_field'] . "\\1.*?>(.+?)</select>@ims", $html, $matches);
                 if ($matches[2]) {
                     preg_match_all("@<option.+?</option>@ims", $matches[2], $m_options);
                 }
-            } elseif ($methods[DYNAMIC_SEND_TO_FIELD]['type'] == 'radio') {
-                preg_match_all("/<input.*?name=(\"|\')" . DYNAMIC_SEND_TO_FIELD . "\\1.*?>/im", $html, $m_options);
+            } elseif ($methods[$this->cfg['dynamic_send_to_field']]['type'] == 'radio') {
+                preg_match_all("/<input.*?name=(\"|\')" . $this->cfg['dynamic_send_to_field'] . "\\1.*?>/im", $html, $m_options);
             }
             if ($m_options[0] && count($m_options[0])) {
                 foreach ($m_options[0] as $m_option) {
@@ -1384,7 +1384,7 @@ class Class_cfFormMailer {
     * @access public
     */
     public function storeDB() {
-        if (!defined('USE_STORE_DB') || !USE_STORE_DB) {
+        if (!$this->cfg['use_store_db']) {
             return true;
         }
 
@@ -1482,7 +1482,7 @@ class Class_cfFormMailer {
     *   Added in v0.0.5
     */
     private function _def_vericode($value, $param, $field) {
-        if (!VERICODE) return true;
+        if (!$this->cfg['vericode']) return true;
         if ($_SESSION['veriword'] == $value) {
             return true;
         } else {
