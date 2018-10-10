@@ -56,6 +56,8 @@ class Class_cfFormMailer {
     public $version = '1.4';
 
     private $lf = "\n";
+    
+    private $sysError;
 
     /**
      * コンストラクタ
@@ -65,6 +67,13 @@ class Class_cfFormMailer {
         if (!$modx) {
             return false;
         }
+        
+        $lang = (isset($modx->event->params['language'])) ? $modx->event->params['language'] : strtolower($modx->config['manager_language']);
+        if(strpos($lang,'euc-jp')!==false) $lang = 'euc-jp';
+        else                               $lang = 'utf8';
+        
+        define(CHARSET, $lang);
+        
         $this->modx = & $modx;
         
         // 変数初期設定
@@ -173,7 +182,7 @@ class Class_cfFormMailer {
                     foreach ($_FILES as $field => $vals) {
                         if ($_FILES[$field]['error'] == $this->cfg['upload_err_ok']) {
                             if ($this->cfg['upload_tmp_path']) {
-                                $new_filepath = $this->modx->config['base_path'] . 'assets/snippets/cfFormMailer/tmp/' . urlencode($_FILES[$field]['name']);
+                                $new_filepath = MODX_BASE_PATH . 'assets/snippets/cfFormMailer/tmp/' . urlencode($_FILES[$field]['name']);
                             } else {
                                 $new_filepath = dirname($_FILES[$field]['tmp_name']) . '/' . urlencode($_FILES[$field]['name']);
                             }
@@ -562,7 +571,7 @@ class Class_cfFormMailer {
             $pm->Body = mb_convert_encoding($tmpl_u, $mailCharset, CHARSET);
             $pm->Encoding = '7bit';
             // 添付ファイル処理
-            if ($this->cfg['attach_file'] && @file_exists($this->cfg['attach_file'])) {
+            if ($this->cfg['attach_file'] && is_file($this->cfg['attach_file'])) {
                 if ($this->cfg['attach_file_name']) {
                     $pm->AddAttachment($this->cfg['attach_file'], mb_convert_encoding($this->cfg['attach_file_name'], $mailCharset, CHARSET));
                 } else {
@@ -860,23 +869,40 @@ class Class_cfFormMailer {
     * テンプレートチャンクの読み込み
     *
     * @access private
-    * @param  string $name チャンク名・またはリソースID
+    * @param  string $tpl_name チャンク名・またはリソースID
     * @return string 読み込んだデータ
     */
-    private function loadTemplate($name) {
-        if (preg_match('/^[1-9][0-9]*$/', $name)) {
-            $html = ($resource = $this->modx->getDocumentObject('id', $name)) ? $resource['content'] : false; // thanks to yama
-        } else {
-            $html = ($tmpl = $this->modx->getChunk($name)) ? $tmpl : false;
+    private function loadTemplate($tpl_name) {
+        if (preg_match('/^@FILE:.+/', $tpl_name)) {
+            $tpl_path = CFM_PATH . trim(substr($tpl_name, 6));
+            if(is_file($tpl_path)) {
+                return $this->parseDocumentSource(file_get_contents($tpl_path));
+            }
         }
-        if ($html) {
-            if(strpos($html,'[!')!==false) $html = str_replace(array('[!','!]'),array('[[',']]'),$html);
-            $html = $this->modx->parseDocumentSource($html);
-            return $html;
+        elseif (preg_match('/^[1-9][0-9]*$/', $tpl_name)) {
+            $doc = $this->modx->getDocumentObject('id', $tpl_name);
+            if(isset($doc['content']) && $doc['content']) {
+                return $this->parseDocumentSource($doc['content']);
+            }
         } else {
-            $this->setError('Chunk read error');
-            return false;
+            if($content = $this->modx->getChunk($tpl_name)) {
+                return $this->parseDocumentSource($content);
+            }
         }
+        
+        $error = 'tpl read error';
+        if($tpl_name) {
+            $error .= sprintf(' (%s)',$tpl_name);
+        }
+        $this->setError($error);
+        return false;
+    }
+    
+    private function parseDocumentSource($content) {
+        if(strpos($content,'[!')!==false) {
+            $content = str_replace(array('[!','!]'),array('[[',']]'),$content);
+        }
+        return $this->modx->parseDocumentSource($content);
     }
 
     /**
@@ -983,7 +1009,7 @@ class Class_cfFormMailer {
     * @return string 認証コード画像の URI
     */
     private function getCaptchaUri() {
-        if(is_file($this->modx->config['base_path'] . 'captcha.php')) {
+        if(is_file(MODX_BASE_PATH . 'captcha.php')) {
             $captchalib = 'captcha.php';
         }
         elseif(is_file(MODX_MANAGER_PATH.'media/captcha/veriword.php')) {
@@ -992,7 +1018,7 @@ class Class_cfFormMailer {
         else
             $captchalib = 'manager/includes/veriword.php?tmp=' . mt_rand();
 
-        return $this->modx->config['base_url']  . $captchalib;
+        return MODX_BASE_URL  . $captchalib;
     }
 
     /**
@@ -1327,9 +1353,10 @@ class Class_cfFormMailer {
     */
     public function parseConfig($config_name) {
         $conf = $this->loadTemplate($config_name);
-        if (!$conf) return '環境設定チャンクの読み込みに失敗しました!';
+        if (!$conf) return '環境設定の読み込みに失敗しました。';
 
         $conf = $this->adaptEncoding($conf);
+        
         $conf = strtr($conf, array("\r\n" => "\n", "\r" => "\n"));
         $conf_arr = explode("\n", $conf);
         foreach ($conf_arr as $line) {
@@ -1343,7 +1370,7 @@ class Class_cfFormMailer {
             if(!$key) continue;
             $cfg[$key] = trim($val);
         }
-
+        
         // 必須項目チェック
         $err = array();
         if (!$cfg['tmpl_input']) $err[] = '`入力画面テンプレート`を指定してください';
@@ -1353,9 +1380,10 @@ class Class_cfFormMailer {
 
         if (!$cfg['tmpl_mail_admin']) $err[] = '`管理者宛メールテンプレート`を指定してください';
         if ($cfg['auto_reply'] && !$cfg['tmpl_mail_reply']) $err[] = '`自動返信メールテンプレート`を指定してください';
-
+        
         if ($err) {
-            return join('<br />', $this->convertText($err));
+            $this->setSystemError(join('<br />', $this->convertText($err)));
+            return false;
         }
 
         // 値の指定が無い場合はデフォルト値を設定
@@ -1374,9 +1402,25 @@ class Class_cfFormMailer {
             define(strtoupper($key), $value);
         }
         $this->cfg = $cfg;
-        return true;
+        return $cfg;
     }
 
+    private function setSystemError($error_string) {
+        $this->sysError = $error_string;
+    }
+    
+    public function hasSystemError() {
+        if($this->sysError) {
+            return true;
+        } else {
+            return false;
+        }
+    }
+    
+    public function getSystemError() {
+        return $this->sysError;
+    }
+    
     /**
     * 送信内容をDBに保存
     * 動作にはcfFormDBモジュールが必要
