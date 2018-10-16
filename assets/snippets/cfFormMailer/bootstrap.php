@@ -36,8 +36,8 @@ if ($mf->hasSystemError()) {
 /**
  * read validate & filter methods
  */
-if (is_file($cfm_path . 'additionalMethods.inc.php')) {
-    include_once $cfm_path . 'additionalMethods.inc.php';
+if (is_file(CFM_PATH . 'additionalMethods.inc.php')) {
+    include_once CFM_PATH . 'additionalMethods.inc.php';
 }
 
 
