@@ -1658,6 +1658,27 @@ class Class_cfFormMailer {
     }
 
     /**
+    * zenhan：半角英数字記号に変換
+    *   See: http://jp2.php.net/manual/ja/function.mb-convert-kana.php
+    *   Added in v1.2
+    */
+    private function _def_zenhan($value, $param='VKas', $field) {
+        $this->form[$field] = mb_convert_kana($this->form[$field], 'VKas', CHARSET);
+        $this->form[$field] = preg_replace('@([0-9])ー@', '$1-', $this->form[$field]);
+        return true;  // 常にtrueを返す
+    }
+
+    /**
+    * hanzen：全角英数字記号に変換
+    *   See: http://jp2.php.net/manual/ja/function.mb-convert-kana.php
+    *   Added in v1.2
+    */
+    private function _def_hanzen($value, $param='VKAS', $field) {
+        $this->form[$field] = mb_convert_kana($this->form[$field], 'VKAS', CHARSET);
+        return true;  // 常にtrueを返す
+    }
+
+    /**
     * url(string)：URL値検証
     *   Added in v1.2
     */
