@@ -234,7 +234,7 @@ class Class_cfFormMailer {
     }
 
     private function getToken() {
-        return base_convert(crc32(str_shuffle(uniqid())),10,36);
+        return base_convert(str_shuffle(mt_rand()),10,36);
     }
     
     /**
