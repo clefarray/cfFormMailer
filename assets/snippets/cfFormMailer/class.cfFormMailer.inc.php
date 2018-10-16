@@ -1576,8 +1576,12 @@ class Class_cfFormMailer {
     private function _def_tel($value, $param, $field) {
         // 強制的に半角に変換します。
         $this->form[$field] = mb_convert_kana($this->form[$field], 'a', CHARSET);
+        $this->form[$field] = preg_replace('@([0-9])ー@', '$1-', $this->form[$field]);
         $checkLen = (substr($this->form[$field],0,1)=='0') ? 10 : 5;
         $checkStr = preg_replace('/[^0-9]/','',$this->form[$field]);
+        if (!preg_match("/[0-9]{4}$/", $this->form[$field])) {
+            return '正しい電話番号を入力してください。';
+        }
         return (preg_match("/[^0-9\-+]/", $checkStr) || strlen($checkStr) < $checkLen) ? '半角数字とハイフンで正しく入力してください' : true;
     }
 
