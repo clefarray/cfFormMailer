@@ -340,7 +340,7 @@ class Class_cfFormMailer {
                 case 'button';
                 case 'reset';
                 case 'hidden';
-                continue 2;
+                    continue 2;
                 case 'checkbox';
                 case 'radio';
                     $fieldType = $m_type[2];
