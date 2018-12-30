@@ -72,7 +72,7 @@ class Class_cfFormMailer {
         if(strpos($lang,'euc-jp')!==false) $lang = 'euc-jp';
         else                               $lang = 'utf8';
         
-        define(CHARSET, $lang);
+        define('CHARSET', $lang);
         
         $this->modx = & $modx;
         
