@@ -878,6 +878,10 @@ class Class_cfFormMailer {
             if(is_file($tpl_path)) {
                 return $this->parseDocumentSource(file_get_contents($tpl_path));
             }
+            $tpl_path = MODX_BASE_PATH . trim(substr($tpl_name, 6));
+            if(is_file($tpl_path)) {
+                return $this->parseDocumentSource(file_get_contents($tpl_path));
+            }
         }
         elseif (preg_match('/^[1-9][0-9]*$/', $tpl_name)) {
             $doc = $this->modx->getDocumentObject('id', $tpl_name);
