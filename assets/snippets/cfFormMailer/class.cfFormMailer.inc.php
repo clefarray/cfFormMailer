@@ -70,7 +70,7 @@ class Class_cfFormMailer {
         
         $lang = (isset($modx->event->params['language'])) ? $modx->event->params['language'] : strtolower($modx->config['manager_language']);
         if(strpos($lang,'euc-jp')!==false) $lang = 'euc-jp';
-        else                               $lang = 'utf8';
+        else                               $lang = 'utf-8';
         
         define('CHARSET', $lang);
         
