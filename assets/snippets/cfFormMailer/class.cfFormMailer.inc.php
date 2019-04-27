@@ -1399,8 +1399,31 @@ class Class_cfFormMailer {
      * @return mixed true || エラーメッセージ
      */
     public function parseConfig($config_name) {
+
+        global $modx;
+
         $conf = $this->loadTemplate($config_name);
         if (!$conf) return '環境設定の読み込みに失敗しました。';
+
+        $cfg = array();
+
+        if (isset($modx->event->params['language'])) {
+            $lang = $modx->event->params['language'];
+        } else {
+            $lang = strtolower($modx->config['manager_language']);
+        }
+
+        if(strpos($lang,'euc-jp')!==false) {
+            $cfg['charset'] = 'euc-jp';
+        } else {
+            $cfg['charset'] = 'utf-8';
+        }
+
+        $this->cfg = $cfg;
+
+        if(!defined('CHARSET')) {
+            define('CHARSET', $this->cfg['charset']);
+        }
 
         $conf = $this->adaptEncoding($conf);
 
@@ -1420,39 +1443,87 @@ class Class_cfFormMailer {
             }
             $cfg[$key] = trim($val);
         }
-        
-        // 必須項目チェック
-        $err = array();
-        if (!$cfg['tmpl_input']) $err[] = '`入力画面テンプレート`を指定してください';
-        if (!$cfg['tmpl_conf'])  $err[] = '`確認画面テンプレート`を指定してください';
-        if (!$cfg['tmpl_comp'] && !$cfg['complete_redirect'])
-        $err[] = '`完了画面テンプレート`または`送信後遷移する完了画面リソースID`を指定してください';
 
-        if (!$cfg['tmpl_mail_admin']) $err[] = '`管理者宛メールテンプレート`を指定してください';
-        if ($cfg['auto_reply'] && !$cfg['tmpl_mail_reply']) $err[] = '`自動返信メールテンプレート`を指定してください';
-        
-        if ($err) {
-            $this->setSystemError(join('<br />', $this->convertText($err)));
+        $this->cfg = $cfg;
+
+        if ($this->getErrors()) {
+            $this->setSystemError(
+                join(
+                    '<br />'
+                    , $this->convertText($this->getErrors())
+                )
+            );
             return false;
         }
 
-        // 値の指定が無い場合はデフォルト値を設定
-        if (!$cfg['admin_mail'])     $cfg['admin_mail']     = $this->modx->config['emailsender'];
-        if (!$cfg['auto_reply'])     $cfg['auto_reply']     = 0;
-        if (!$cfg['reply_to'])       $cfg['reply_to']       = 'email';
-        if (!$cfg['reply_fromname']) $cfg['reply_fromname'] = $this->modx->config['site_name'];
+        $this->setDefaultConfig();
 
-        if (!$cfg['vericode'])       $cfg['vericode']     = 0;
-        if (!$cfg['admin_ishtml'])   $cfg['admin_ishtml'] = 0;
-        if (!$cfg['reply_ishtml'])   $cfg['reply_ishtml'] = 0;
-        if (!$cfg['allow_html'])     $cfg['allow_html']   = 0;
+        return $this->cfg;
+    }
 
-        // 定数として設定
-        foreach ($cfg as $key => $value) {
-            define(strtoupper($key), $value);
+    public function getConfig($key, $default=null) {
+        if(!isset($this->cfg[$key])) {
+            return $default;
         }
-        $this->cfg = $cfg;
-        return $cfg;
+        return $this->cfg[$key];
+    }
+
+    private function getErrors() {
+        static $errors = null;
+
+        if($errors!==null) {
+            return $errors;
+        }
+
+        // 必須項目チェック
+        $errors = array();
+        if (!$this->getConfig('tmpl_input')) {
+            $errors[] = '`入力画面テンプレート`を指定してください';
+        }
+        if (!$this->getConfig('tmpl_conf')) {
+            $errors[] = '`確認画面テンプレート`を指定してください';
+        }
+        if (!$this->getConfig('tmpl_comp') && !$this->getConfig('complete_redirect')) {
+            $errors[] = '`完了画面テンプレート`または`送信後遷移する完了画面リソースID`を指定してください';
+        }
+
+        if (!$this->getConfig('tmpl_mail_admin')) {
+            $errors[] = '`管理者宛メールテンプレート`を指定してください';
+        }
+        if ($this->getConfig('auto_reply') && !$this->getConfig('tmpl_mail_reply')) {
+            $errors[] = '`自動返信メールテンプレート`を指定してください';
+        }
+
+        return $errors;
+    }
+
+    private function setDefaultConfig() {
+        // 値の指定が無い場合はデフォルト値を設定
+        if (!$this->getConfig('admin_mail')) {
+            $this->cfg['admin_mail'] = $this->modx->config['emailsender'];
+        }
+        if (!$this->getConfig('auto_reply')) {
+            $this->cfg['auto_reply'] = 0;
+        }
+        if (!$this->getConfig('reply_to')) {
+            $this->cfg['reply_to'] = 'email';
+        }
+        if (!$this->getConfig('reply_fromname')) {
+            $this->cfg['reply_fromname'] = $this->modx->config['site_name'];
+        }
+
+        if (!$this->getConfig('vericode')) {
+            $this->cfg['vericode'] = 0;
+        }
+        if (!$this->getConfig('admin_ishtml')) {
+            $this->cfg['admin_ishtml'] = 0;
+        }
+        if (!$this->getConfig('reply_ishtml')) {
+            $this->cfg['reply_ishtml'] = 0;
+        }
+        if (!$this->getConfig('allow_html')) {
+            $this->cfg['allow_html'] = 0;
+        }
     }
 
     private function setSystemError($error_string) {
