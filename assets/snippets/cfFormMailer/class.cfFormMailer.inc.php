@@ -1732,8 +1732,12 @@ class Class_cfFormMailer {
      * @return bool
      */
     private function _def_zenhan($value, $param='VKas', $field) {
-        $this->form[$field] = mb_convert_kana($this->form[$field], 'VKas', CHARSET);
-        $this->form[$field] = preg_replace('@([0-9])ー@', '$1-', $this->form[$field]);
+        $this->form[$field] = mb_convert_kana(
+            $this->form[$field]
+            , $param
+            , $this->cfg['charset']
+        );
+        $this->form[$field] = preg_replace('@([0-9])ー@u', '$1-', $this->form[$field]);
         return true;  // 常にtrueを返す
     }
 
