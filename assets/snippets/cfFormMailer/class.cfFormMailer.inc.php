@@ -1767,7 +1767,11 @@ class Class_cfFormMailer {
      * implode : 文字列結合
      */
     private function _f_implode($text, $param) {
-        return (is_array($text)) ? implode(str_replace("\\n", "\n", $param), $text) : $text;
+        if (is_array($text)) {
+            return implode(str_replace("\\n", "\n", $param), $text);
+        }
+
+        return $text;
     }
 
     /**
