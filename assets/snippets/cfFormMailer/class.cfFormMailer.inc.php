@@ -1718,11 +1718,19 @@ class Class_cfFormMailer {
      * @param $field
      * @return bool
      */
-    private function _def_convert($value, $param, $field) {
+    private function _def_convert($value, $param = 'K', $field) {
         if (!$param) {
             $param = 'K';
         }
-        $this->form[$field] = mb_convert_kana($this->form[$field], $param, CHARSET);
+        $this->form[$field] = mb_convert_kana(
+            $this->form[$field]
+            , $param
+            , $this->cfg['charset']
+        );
+        return true;  // 常にtrueを返す
+    }
+
+    /**
      * zenhan：半角英数字記号に変換
      *   See: http://jp2.php.net/manual/ja/function.mb-convert-kana.php
      *   Added in v1.2
