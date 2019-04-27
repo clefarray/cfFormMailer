@@ -1704,9 +1704,13 @@ class Class_cfFormMailer {
         $size = @stat($_FILES[$field]['tmp_name']);
         if ($size === false) {
             return 'ファイルのアップロードに失敗しました';
-        } else {
-            return ($size['size'] <= $param * 1024) ? true : $param . 'キロバイト以内のファイルを指定してください';
         }
+
+        if (($size['size'] <= $param * 1024)) {
+            return true;
+        }
+
+        return $param . 'キロバイト以内のファイルを指定してください';
     }
 
     /**
