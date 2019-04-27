@@ -1747,7 +1747,11 @@ class Class_cfFormMailer {
      * @return bool
      */
     private function _def_hanzen($value, $param='VKAS', $field) {
-        $this->form[$field] = mb_convert_kana($this->form[$field], 'VKAS', CHARSET);
+        $this->form[$field] = mb_convert_kana(
+            $this->form[$field]
+            , $param
+            , $this->cfg['charset']
+        );
         return true;  // 常にtrueを返す
     }
 
