@@ -10,8 +10,14 @@
  * LICENSE: GNU General Public License (GPL) (http://www.gnu.org/copyleft/gpl.html)
  */
 
+/** @var documentParser $modx */
+
 if ($modx->isBackend()) {
     return '';
+}
+
+if (!isset($config)) {
+    return '<strong>ERROR!:</strong> 「config」パラメータは必須です';
 }
 
 define('CFM_PATH', __DIR__ . '/');
@@ -19,13 +25,6 @@ define('CFM_PATH', __DIR__ . '/');
 include_once(CFM_PATH . 'class.cfFormMailer.inc.php');
 
 $mf = new Class_cfFormMailer($modx);
-
-/**
- * read config
- */
-if (!isset($config)) {
-    return '<strong>ERROR!:</strong> 「config」パラメータは必須です';
-}
 
 $mf->parseConfig($config);
 
