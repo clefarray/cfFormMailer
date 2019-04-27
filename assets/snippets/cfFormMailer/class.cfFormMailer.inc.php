@@ -129,7 +129,7 @@ class Class_cfFormMailer {
         }
 
         // ポストされた内容を一時的に退避（事故対策）
-        if ($mode == 'error' || $mode == 'conf') {
+        if ($mode === 'error' || $mode === 'conf') {
             $_SESSION['_cf_autosave'] = $this->form;
         }
 
@@ -152,13 +152,13 @@ class Class_cfFormMailer {
                 $html = preg_replace("/\ssendto=([\"\']).+?\\1/i", '', $html);
 
                 // エラーの場合は入力値とエラーメッセージを付記
-                if ($mode == 'error') {
+                if ($mode === 'error') {
                     $html = $this->assignErrorTag($html,$this->getFormError());
                     $html = $this->assignErrorClass($html, $this->getFormError());    // Added in v0.0.7
                     $html = $this->replacePlaceHolder($html, $this->getFormError());
                     $html = $this->restoreForm($html, $this->form);
                     // 「戻り」の場合は入力値のみ復元
-                } elseif ($mode == 'return') {
+                } elseif ($mode === 'return') {
                     $html = $this->restoreForm($html, $this->form);
                     // アップロード済みのファイルを削除
                     if (count($_SESSION['_cf_uploaded'])) {
@@ -167,7 +167,7 @@ class Class_cfFormMailer {
                         }
                         unset($_SESSION['_cf_uploaded']);
                     }
-                } elseif ($mode == 'input' && isset($_SESSION['_cf_autosave'])) {
+                } elseif ($mode === 'input' && isset($_SESSION['_cf_autosave'])) {
                     $html = $this->restoreForm($html, $_SESSION['_cf_autosave']);
                 }
                 break;
@@ -258,7 +258,7 @@ class Class_cfFormMailer {
 
         foreach ($this->parsedForm as $field => $method) {
             // 初期変換
-            if ($method['type'] != 'textarea') {
+            if ($method['type'] !== 'textarea') {
                 // <textarea>タグ以外は改行を削除
                 if (is_array($this->form[$field])) {
                     array_walk($this->form[$field], create_function('&$v,$k', '$v = strtr($v, array("\r" => "", "\n" => ""));'));
@@ -270,7 +270,7 @@ class Class_cfFormMailer {
 
             // 入力必須項目のチェック
             if ($method['required']) {
-                if ($method['type'] == 'file') {
+                if ($method['type'] === 'file') {
                     if ( !(isset($_SESSION['_cf_uploaded'][$field]) && is_file($_SESSION['_cf_uploaded'][$field]['path'])) && (!isset($_POST['return']) && empty($_FILES[$field]['tmp_name'])) ) {
                         $this->setFormError($field, $this->adaptEncoding($method['label']), '選択必須項目です');
                     }
@@ -330,7 +330,7 @@ class Class_cfFormMailer {
 
             $fieldName = str_replace('[]', '', $m_name[2]);
             // 復元処理しないタグ
-            if ($fieldName == '_mode') continue;
+            if ($fieldName === '_mode') continue;
 
             switch($m_type[2]) {
                 // 復元処理しないタグ
@@ -350,7 +350,7 @@ class Class_cfFormMailer {
             }
 
             // テキストボックス
-            if ($tag[1] == 'input' && $fieldType == 'text') {
+            if ($tag[1] === 'input' && $fieldType === 'text') {
                 if (count($m_value) > 1) {
                     $pat = $m_value[0];
                     $rep = 'value="' . $this->encodeHTML($params[$fieldName]).'"';
@@ -359,19 +359,19 @@ class Class_cfFormMailer {
                     $rep = $tag[2] . ' value="' . $this->encodeHTML($params[$fieldName]).'"';
                 }
             // チェックボックス
-            } elseif ($tag[1] == 'input' && $fieldType == 'checkbox') {
+            } elseif ($tag[1] === 'input' && $fieldType === 'checkbox') {
                 if ($m_value[2] == $params[$fieldName] || (is_array($params[$fieldName]) && in_array($m_value[2], $params[$fieldName]))) {
                     $pat = $tag[2];
                     $rep = $tag[2] . ' checked="checked"';
                 }
             // ラジオボタン
-            } elseif ($tag[1] == 'input' && $fieldType == 'radio') {
+            } elseif ($tag[1] === 'input' && $fieldType === 'radio') {
                 if ($m_value[2] == $params[$fieldName]) {
                     $pat = $tag[2];
                     $rep = $tag[2] . ' checked="checked"';
                 }
             // プルダウンリスト
-            } elseif ($tag[1] == 'select') {
+            } elseif ($tag[1] === 'select') {
                 $pat = $rep = '';
                 preg_match_all("/<option(.*?)value=('|\")(.*?)\\2(.*?>)/ism", $tag[4], $tag_opt, PREG_SET_ORDER);
                 if (count($tag_opt) > 1) {
@@ -387,7 +387,7 @@ class Class_cfFormMailer {
                     $html = str_replace($old, $new, $html);
                 }
             // 複数行テキスト
-            } elseif ($tag[1] == 'textarea') {
+            } elseif ($tag[1] === 'textarea') {
                 if ($params[$fieldName]) {
                     $pat = $tag[0];
                     $rep = '<' . $tag[1] . $tag[2] . $tag[3] . '>' . $this->encodeHTML($params[$fieldName]) . '</textarea>';
@@ -705,7 +705,7 @@ class Class_cfFormMailer {
                         $rep = str_replace($match_classes[0], $newClass, $m[0]);
                         // そうでなければ class 要素を追加
                     } else {
-                        $rep = preg_replace("#\s*/?>$#", '', $m[0]) . sprintf(' class="%s"', $this->cfg['invalid_class']) . ($m[1] == 'input' ? ' /' : '') . '>';
+                        $rep = preg_replace("#\s*/?>$#", '', $m[0]) . sprintf(' class="%s"', $this->cfg['invalid_class']) . ($m[1] === 'input' ? ' /' : '') . '>';
                     }
                     $html = str_replace($m[0], $rep, $html);
                 }
@@ -741,7 +741,7 @@ class Class_cfFormMailer {
      */
     private function adaptEncoding($text) {
         
-        if (strtolower(CHARSET) == 'utf-8') return $text;
+        if (strtolower(CHARSET) === 'utf-8') return $text;
 
         if (is_array($text)) {
             $text = array_map($this->adaptEncoding, $text);
@@ -1062,7 +1062,7 @@ class Class_cfFormMailer {
 
         $ret = array();
         foreach ($array as $k => $v) {
-            if (!is_int($k) && ($k == '_mode' || $k == '_cffm_token')) continue;
+            if (!is_int($k) && ($k === '_mode' || $k === '_cffm_token')) continue;
             if (is_array($v)) {
                 $v = $this->getFormVariables($v);
             } else {
@@ -1155,6 +1155,7 @@ class Class_cfFormMailer {
                 }
             }
         }
+
         return true;
     }
 
@@ -1454,7 +1455,7 @@ class Class_cfFormMailer {
         $newID = $this->modx->db->getInsertId();
         $rank = 0;
         foreach ($this->form as $key => $val) {
-            if ($key == 'veri') {
+            if ($key === 'veri') {
                 continue;
             }
             if (is_array($val)) {
