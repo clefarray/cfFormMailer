@@ -151,7 +151,7 @@ class Class_cfFormMailer {
                 } elseif ($mode === 'return') {
                     $html = $this->restoreForm($html, $this->form);
                     // アップロード済みのファイルを削除
-                    if (count($_SESSION['_cf_uploaded'])) {
+                    if (is_array($_SESSION['_cf_uploaded']) && count($_SESSION['_cf_uploaded'])) {
                         foreach ($_SESSION['_cf_uploaded'] as $filedata) {
                             @unlink($filedata['path']);
                         }
@@ -167,7 +167,7 @@ class Class_cfFormMailer {
                 $values = $this->convertNullToStr($values, '&nbsp;');
                 if ($this->cfg['auto_reply']) $values['reply_to'] = $this->getAutoReplyAddress();
                 // アップロードファイル関連
-                if (count($_FILES)) {
+                if (is_array($_FILES) && count($_FILES)) {
                     unset($_SESSION['_cf_uploaded']);
                     foreach ($_FILES as $field => $vals) {
                         if ($_FILES[$field]['error'] != $this->cfg['upload_err_ok']) {
