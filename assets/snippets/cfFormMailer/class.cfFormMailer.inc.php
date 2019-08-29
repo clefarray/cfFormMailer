@@ -914,6 +914,7 @@ class Class_cfFormMailer {
      * @return string 読み込んだデータ
      */
     private function loadTemplate($tpl_name) {
+        $tpl_name = trim($tpl_name);
         if (preg_match('/^@FILE:.+/', $tpl_name)) {
             $tpl_path = CFM_PATH . trim(substr($tpl_name, 6));
             if(is_file($tpl_path)) {
@@ -923,9 +924,8 @@ class Class_cfFormMailer {
             if(is_file($tpl_path)) {
                 return $this->parseDocumentSource(file_get_contents($tpl_path));
             }
-        }
-        elseif (preg_match('/^[1-9][0-9]*$/', $tpl_name)) {
-            $doc = $this->modx->getDocumentObject('id', $tpl_name);
+        } elseif (preg_match('/^[1-9][0-9]*$/', $tpl_name)) {
+            $doc = $this->getDocument($tpl_name);
             if(isset($doc['content']) && $doc['content']) {
                 return $this->parseDocumentSource($doc['content']);
             }
@@ -935,7 +935,7 @@ class Class_cfFormMailer {
 
         $error = 'tpl read error';
         if($tpl_name) {
-            $error .= sprintf(' (%s)',$tpl_name);
+            $error .= sprintf(' (%s)', $tpl_name);
         }
         $this->setError($error);
         return false;
@@ -948,6 +948,21 @@ class Class_cfFormMailer {
         return $this->modx->parseDocumentSource($content);
     }
 
+    private function getDocument($docid) {
+        global $modx;
+        $rs = $modx->db->select(
+            '*'
+            , '[+prefix+]site_content'
+            , 'id=' . $docid
+            , ''
+            , 1
+        );
+        $doc = $modx->db->getRow($rs);
+        if(!$doc) {
+            return false;
+        }
+        return $doc;
+    }
     /**
      * プレースホルダを置換
      *
@@ -966,7 +981,9 @@ class Class_cfFormMailer {
         }
 
         preg_match_all("/\[\+([^\+\|]+)(\|(.*?)(\((.+?)\))?)?\+\]/is", $text, $match, PREG_SET_ORDER);
-        if (!count($match)) return $text;
+        if (!count($match)) {
+            return $text;
+        }
 
         //1.0.15J以降 $modx->config['output_filter']は廃止
         $toFilter = true;
