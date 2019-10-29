@@ -264,10 +264,6 @@ class Class_cfFormMailer {
                     foreach ($this->form[$field] as $k=>&$v) {
                         $v = strtr($v, array("\r" => '', "\n" => ''));
                     }
-                    array_walk(
-                        $this->form[$field]
-                        , create_function('&$v,$k', '$v = strtr($v, array("\r" => "", "\n" => ""));')
-                    );
                 } else {
                     $this->form[$field] = strtr($this->form[$field], array("\r" => '', "\n" => ''));
                 }
@@ -299,14 +295,16 @@ class Class_cfFormMailer {
                     // 標準メソッドを処理
                     $funcName = '_def_' . $method_name[1];
                     if (is_callable(array($this, $funcName))) {
-                        if (($result = $this->$funcName($this->form[$field], $method_name[3], $field)) !== true) {
+                        $result = $this->$funcName($this->form[$field], $method_name[3], $field);
+                        if ($result !== true) {
                             $this->setFormError($field, $this->adaptEncoding($method['label']), $result);
                         }
                     }
                     // ユーザー追加メソッドを処理
                     $funcName = '_validate_' . $method_name[1];
                     if (is_callable($funcName)) {
-                        if (($result = $funcName($this->form[$field], $method_name[3])) !== true) {
+                        $result = $funcName($this->form[$field], $method_name[3]);
+                        if ($result !== true) {
                             $this->setFormError($field, $this->adaptEncoding($method['label']), $this->adaptEncoding($result));
                         }
                     }
@@ -742,13 +740,9 @@ class Class_cfFormMailer {
         // エラーのあるフィールド名リストを作成
         if (isset($errors['errors'])) unset($errors['errors']);
         $keys = array_unique(array_keys($errors));
-        $keys = array_map(
-            create_function('$a', 'return str_replace("error.", "", $a);')
-            , $keys
-        );
-
         foreach ($keys as $field) {
-            $pattern = "#<(input|textarea|select)[^>]*?name=(\"|\'){$field}\\2[^/>]*/?>#im";
+            $field = str_replace('error.', '', $field);
+            $pattern = "#<(input|textarea|select)[^>]*?name=(\"|\')" . $field . "\\2[^/>]*/?>#im";
             if (preg_match_all($pattern, $html, $match, PREG_SET_ORDER)) {
                 foreach ($match as $m) {
                     // クラスを定義済みの場合は最後に追加
