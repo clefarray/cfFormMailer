@@ -1,10 +1,10 @@
 <?php
 /**
  * cfFormMailer
- * 
+ *
  * @author  Clefarray Factory
  * @link  http://www.clefarray-web.net/
- * @version 1.4
+ * @version 1.6
  *
  * Documentation: http://www.clefarray-web.net/blog/manual/cfFormMailer_manual.html
  * LICENSE: GNU General Public License (GPL) (http://www.gnu.org/copyleft/gpl.html)
@@ -14,11 +14,6 @@ class Class_cfFormMailer {
 
     public $cfg = array();
 
-    /**
-     * modxオブジェクト
-     */
-    private $modx;
-    
     /**
      * postされたデータ
      * @private array
@@ -42,85 +37,82 @@ class Class_cfFormMailer {
      * @private array
      */
     private $parsedForm;
-  
+
     /**
      * 送信先動的変更のための送信先情報
      * @private array
      */
     private $dynamic_send_to = array();
-  
+
     /**
      * バージョン番号
      * @public string
      */
-    public $version = '1.4';
+    public $version = '1.6';
 
     private $lf = "\n";
+
+    private $sysError;
 
     /**
      * コンストラクタ
      *
      */
-    function __construct(&$modx) {
-        if (!$modx) {
-            return false;
-        }
-        $this->modx = & $modx;
-        
+    public function __construct(&$modx) {
+
         // 変数初期設定
         $this->form = array();
         $this->error_message ='';
         $this->formError = array();
-        
+
         // postされたデータを読み取り
         $this->form = $this->getFormVariables($_POST);
-        
+
         // uploadクラス読み込み
-        if (is_file(dirname(__FILE__) . '/class.upload.php')) {
-            include_once('class.upload.php');
+        if (is_file(__DIR__ . '/class.upload.php')) {
+            include_once __DIR__ . '/class.upload.php';
         }
     }
 
     /**
      * 現在のモードからHTML文書を取得・作成
-     * 
+     *
      * @access public
      * @param  string $mode 現在のモード(input / conf / comp / error / return)
      * @return string HTML文書
      */
     public function createPageHtml($mode) {
 
-        // ページテンプレート読み込み
-        switch ($mode) {
-            case 'input':
-            case 'error':
-            case 'return':
-                $html = $this->loadTemplate(TMPL_INPUT);
-                break;
-            case 'conf':
-                $html = $this->loadTemplate(TMPL_CONF);
-            break;
-            case 'comp':
-                if (defined('COMPLETE_REDIRECT') && COMPLETE_REDIRECT) {
-                    if (preg_match("/^[1-9][0-9]*$/", COMPLETE_REDIRECT)) {
-                        $url = $this->modx->makeUrl(COMPLETE_REDIRECT);
-                    } else {
-                        $url = COMPLETE_REDIRECT;
-                    }
-                    if(isset($_SESSION['_cf_autosave'])) unset($_SESSION['_cf_autosave']);
-                    $this->modx->sendRedirect($url);
-                }
-                $html = $this->loadTemplate(TMPL_COMP);
-                break;
-            default:
-                return false;
+        if ($mode === 'comp' && $this->getConfig('complete_redirect')) {
+            if (preg_match('/^[1-9][0-9]*$/', $this->cfg['complete_redirect'])) {
+                $url = evo()->makeUrl($this->cfg['complete_redirect']);
+            } else {
+                $url = $this->cfg['complete_redirect'];
             }
-        if ($html === false) {
+            if(isset($_SESSION['_cf_autosave'])) {
+                unset($_SESSION['_cf_autosave']);
+            }
+            evo()->sendRedirect($url);
+            exit;
+        }
+
+        // ページテンプレート読み込み
+        if (in_array($mode,array('input','error','return'))) {
+            $text = $this->loadTemplate($this->cfg['tmpl_input']);
+        } elseif($mode === 'conf') {
+            $text = $this->loadTemplate($this->cfg['tmpl_conf']);
+        } elseif($mode === 'comp') {
+            $text = $this->loadTemplate($this->cfg['tmpl_comp']);
+        } else {
+            return false;
+        }
+
+        if ($text === false) {
             return false;
         }
 
         // ポストされた内容を一時的に退避（事故対策）
-        if ($mode == 'error' || $mode == 'conf') {
+        if ($mode === 'error' || $mode === 'conf') {
             $_SESSION['_cf_autosave'] = $this->form;
         }
 
@@ -132,114 +124,131 @@ class Class_cfFormMailer {
                 $nextMode = 'conf';
 
                 // CAPTCHA  # Added in v0.0.5
-                if (VERICODE) {
-                    $captcha_uri = $this->getCaptchaUri();
-                    $html = $this->replacePlaceHolder($html, array('verimageurl' => $captcha_uri));
+                if ($this->cfg['vericode']) {
+                    $text = $this->replacePlaceHolder($text, array('verimageurl' => $this->getCaptchaUri()));
                 }
 
                 // 検証フィールドを削除
-                $html = preg_replace("/\svalid=([\"\']).+?\\1/i", '', $html);
+                $text = preg_replace("/\svalid=([\"']).+?\\1/i", '', $text);
                 // 送信先情報を削除
-                $html = preg_replace("/\ssendto=([\"\']).+?\\1/i", '', $html);
+                $text = preg_replace("/\ssendto=([\"']).+?\\1/i", '', $text);
 
                 // エラーの場合は入力値とエラーメッセージを付記
-                if ($mode == 'error') {
-                    $html = $this->assignErrorTag($html,$this->getFormError());
-                    $html = $this->assignErrorClass($html, $this->getFormError());    // Added in v0.0.7
-                    $html = $this->replacePlaceHolder($html, $this->getFormError());
-                    $html = $this->restoreForm($html, $this->form);
+                if ($mode === 'error') {
+                    $text = $this->assignErrorTag($text,$this->getFormError());
+                    $text = $this->assignErrorClass($text, $this->getFormError());
+                    $text = $this->replacePlaceHolder($text, $this->getFormError());
+                    $text = $this->restoreForm($text, $this->form);
                     // 「戻り」の場合は入力値のみ復元
-                } elseif ($mode == 'return') {
-                    $html = $this->restoreForm($html, $this->form);
+                } elseif ($mode === 'return') {
+                    $text = $this->restoreForm($text, $this->form);
                     // アップロード済みのファイルを削除
-                    if (count($_SESSION['_cf_uploaded'])) {
+                    if (is_array($_SESSION['_cf_uploaded']) && count($_SESSION['_cf_uploaded'])) {
                         foreach ($_SESSION['_cf_uploaded'] as $filedata) {
                             @unlink($filedata['path']);
                         }
                         unset($_SESSION['_cf_uploaded']);
                     }
-                } elseif ($mode == 'input' && isset($_SESSION['_cf_autosave'])) {
-                    $html = $this->restoreForm($html, $_SESSION['_cf_autosave']);
+                } elseif ($mode === 'input' && isset($_SESSION['_cf_autosave'])) {
+                    $text = $this->restoreForm($text, $_SESSION['_cf_autosave']);
                 }
                 break;
             case 'conf':
                 $nextMode = 'send';
                 $values = $this->encodeHTML($this->form, true);
                 $values = $this->convertNullToStr($values, '&nbsp;');
-                if (AUTO_REPLY) $values['reply_to'] = $this->getAutoReplyAddress();
+                if ($this->cfg['auto_reply']) {
+                    $values['reply_to'] = $this->getAutoReplyAddress();
+                }
                 // アップロードファイル関連
-                if (count($_FILES)) {
+                if (is_array($_FILES) && count($_FILES)) {
                     unset($_SESSION['_cf_uploaded']);
                     foreach ($_FILES as $field => $vals) {
-                        if ($_FILES[$field]['error'] == UPLOAD_ERR_OK) {
-                            if (defined('UPLOAD_TMP_PATH') && UPLOAD_TMP_PATH) {
-                                $new_filepath = $this->modx->config['base_path'] . 'assets/snippets/cfFormMailer/tmp/' . urlencode($_FILES[$field]['name']);
-                            } else {
-                                $new_filepath = dirname($_FILES[$field]['tmp_name']) . DIRECTORY_SEPARATOR . urlencode($_FILES[$field]['name']);
-                            }
-                            move_uploaded_file($_FILES[$field]['tmp_name'], $new_filepath);
-                            $mime = $this->_getMimeType($new_filepath, $field);
-                            $_SESSION['_cf_uploaded'][$field] = array(
-                                'path' => $new_filepath,
-                                'mime' => $mime
+                        if ($_FILES[$field]['error'] != $this->cfg['upload_err_ok']) {
+                            continue;
+                        }
+                        if ($this->cfg['upload_tmp_path']) {
+                            $new_filepath = sprintf(
+                                '%stmp/%s'
+                                , CFM_PATH
+                                , urlencode($_FILES[$field]['name']
+                                )
                             );
-                            // プレースホルダ定義
-                            $name =  htmlspecialchars($_FILES[$field]['name'], ENT_QUOTES);
-                            $type = strtoupper($this->_getType($mime));
-                            if (substr($mime, 0, 6) == 'image/') {
-                                $values[$field . '.' . 'imagewidth']  = $size[0];
-                                $values[$field . '.' . 'imageheight'] = $size[1];
-                                $values[$field . '.' . 'imagename']   = $name;
-                                $values[$field . '.' . 'imagetype']   = $type;
-                            } else {
-                                $values[$field . '.' . 'filetype'] = $type;
-                                $values[$field . '.' . 'filename'] = $name;
-                            }
+                        } else {
+                            $new_filepath = sprintf(
+                                '%s/%s'
+                                , dirname($_FILES[$field]['tmp_name'])
+                                , urlencode($_FILES[$field]['name']
+                                )
+                            );
+                        }
+                        evo()->move_uploaded_file($_FILES[$field]['tmp_name'], $new_filepath);
+                        $mime = $this->_getMimeType($new_filepath, $field);
+                        $_SESSION['_cf_uploaded'][$field] = array(
+                            'path' => $new_filepath,
+                            'mime' => $mime
+                        );
+                        // プレースホルダ定義
+                        $name =  evo()->htmlspecialchars($_FILES[$field]['name'], ENT_QUOTES);
+                        $type = strtoupper($this->_getType($mime));
+                        if (strpos($mime, 'image/') === 0) {
+                            $values[sprintf('%d.imagename', $field)]   = $name;
+                            $values[sprintf('%d.imagetype', $field)]   = $type;
+                        } else {
+                            $values[sprintf('%d.filename', $field)] = $name;
+                            $values[sprintf('%d.filetype', $field)] = $type;
                         }
                     }
                 }
-                $html = $this->replacePlaceHolder($html, $values);
-                $html = $this->addHiddenTags($html, $this->form);
+                $text = $this->replacePlaceHolder($text, $values);
+                $text = $this->addHiddenTags($text, $this->form);
 
                 // ワンタイムトークンを生成
                 $token = $this->getToken();
                 $_SESSION['_cffm_token'] = $token;
-                $html = str_ireplace('</form>', '<input type="hidden" name="_cffm_token" value="' . $token . '" />' . "\n</form>", $html);
+                $text = str_ireplace(
+                    '</form>'
+                    , sprintf(
+                        '<input type="hidden" name="_cffm_token" value="%s" /></form>'
+                        , $token
+                    )
+                    , $text
+                );
                 break;
             case 'comp':
                 $nextMode = '';
-                $html = $this->replacePlaceHolder($html, $this->encodeHTML($this->form));
+                $text = $this->replacePlaceHolder($text, $this->encodeHTML($this->form));
                 break;
         }
 
         // 余った<iferror>タグ、プレースホルダを削除
-        $html = preg_replace("@<iferror.*?>.+?</iferror>@ism", '', $html);
-        $html = $this->clearPlaceHolder($html);
+        $text = preg_replace("@<iferror.*?>.+?</iferror>@ism", '', $text);
+        $text = $this->clearPlaceHolder($text);
 
         // 次の処理名をフォームに付記
         if ($nextMode) {
-            $html = preg_replace('/(<form.*?>)/i', '\\1<input type="hidden" name="_mode" value="' . $nextMode . '" />', $html);
+            $text = preg_replace('/(<form.*?>)/i', '\\1<input type="hidden" name="_mode" value="' . $nextMode . '" />', $text);
         }
 
-        return $html;
+        return $text;
     }
 
     private function getToken() {
-        return base_convert(crc32(str_shuffle(uniqid())),10,36);
+        return base_convert(str_shuffle(mt_rand()),10,36);
     }
-    
+
     /**
-    * 入力値を検証
-    *
-    * @access public
-    * @param  void
-    * @return boolean result
-    */
+     * 入力値を検証
+     *
+     * @access public
+     * @param  void
+     * @return boolean result
+     */
     public function validate() {
         $this->formError = array();
 
         // 検証メソッドを取得
-        if (!$tmp_html = $this->loadTemplate(TMPL_INPUT)) {
+        if (!$tmp_html = $this->loadTemplate($this->cfg['tmpl_input'])) {
             $this->raiseError($this->convertText('入力画面テンプレートの読み込みに失敗しました'));
         }
         if ($this->parseForm($tmp_html) === false) {
@@ -249,10 +258,12 @@ class Class_cfFormMailer {
 
         foreach ($this->parsedForm as $field => $method) {
             // 初期変換
-            if ($method['type'] != 'textarea') {
+            if ($method['type'] !== 'textarea') {
                 // <textarea>タグ以外は改行を削除
                 if (is_array($this->form[$field])) {
-                    array_walk($this->form[$field], create_function('&$v,$k', '$v = strtr($v, array("\r" => "", "\n" => ""));'));
+                    foreach ($this->form[$field] as $k=>&$v) {
+                        $v = strtr($v, array("\r" => '', "\n" => ''));
+                    }
                 } else {
                     $this->form[$field] = strtr($this->form[$field], array("\r" => '', "\n" => ''));
                 }
@@ -261,30 +272,39 @@ class Class_cfFormMailer {
 
             // 入力必須項目のチェック
             if ($method['required']) {
-                if ($method['type'] == 'file') {
-                    if ( !(isset($_SESSION['_cf_uploaded'][$field]) && is_file($_SESSION['_cf_uploaded'][$field]['path'])) && (!isset($_POST['return']) && empty($_FILES[$field]['tmp_name'])) ) {
+                if ($method['type'] === 'file') {
+                    if (
+                        (!isset($_SESSION['_cf_uploaded'][$field]) || !is_file($_SESSION['_cf_uploaded'][$field]['path']))
+                        && (!isset($_POST['return']) && empty($_FILES[$field]['tmp_name']))
+                    ) {
                         $this->setFormError($field, $this->adaptEncoding($method['label']), '選択必須項目です');
                     }
                 } elseif ((is_array($this->form[$field]) && !count($this->form[$field])) || $this->form[$field] == '') {
-                    $this->setFormError($field, $this->adaptEncoding($method['label']), (($method['type'] == 'radio' || $method['type'] == 'select') ? '選択' : '入力') . '必須項目です');
+                    $this->setFormError(
+                        $field
+                        , $this->adaptEncoding($method['label'])
+                        , (in_array($method['type'], array('radio', 'select')) ? '選択' : '入力') . '必須項目です');
                 }
             }
 
             // 入力値の検証
-            if (!empty($this->form[$field]) || !empty($_FILES[$field]['tmp_name']) || $this->form[$field]==='0') {
+            if ($this->form[$field] || $_FILES[$field]['tmp_name'] || $this->form[$field]==='0') {
                 foreach ($methods as $indiv_m) {
-                    preg_match("/^([^\(]+)(\(([^\)]*)\))?$/", $indiv_m, $method_name);
+                    $method_name = array();
+                    preg_match("/^([^(]+)(\(([^)]*)\))?$/", $indiv_m, $method_name);
                     // 標準メソッドを処理
                     $funcName = '_def_' . $method_name[1];
                     if (is_callable(array($this, $funcName))) {
-                        if (($result = $this->$funcName($this->form[$field], $method_name[3], $field)) !== true) {
+                        $result = $this->$funcName($this->form[$field], $method_name[3], $field);
+                        if ($result !== true) {
                             $this->setFormError($field, $this->adaptEncoding($method['label']), $result);
                         }
                     }
                     // ユーザー追加メソッドを処理
                     $funcName = '_validate_' . $method_name[1];
                     if (is_callable($funcName)) {
-                        if (($result = $funcName($this->form[$field], $method_name[3])) !== true) {
+                        $result = $funcName($this->form[$field], $method_name[3]);
+                        if ($result !== true) {
                             $this->setFormError($field, $this->adaptEncoding($method['label']), $this->adaptEncoding($result));
                         }
                     }
@@ -293,7 +313,7 @@ class Class_cfFormMailer {
         }
 
         // 自動返信先メールアドレスをチェック
-        if (AUTO_REPLY) {
+        if ($this->cfg['auto_reply']) {
             if (!$this->_isValidEmail($this->getAutoReplyAddress())) {
                 $this->setFormError('reply_to', 'メールアドレス', '形式が正しくありません');
             }
@@ -303,25 +323,29 @@ class Class_cfFormMailer {
     }
 
     /**
-    * 入力値を復元
-    *
-    * @param  string $html   HTML text
-    * @param  array  $params 再現する値の配列
-    * @return void
-    */
+     * 入力値を復元
+     *
+     * @param  string $html   HTML text
+     * @param  array  $params 再現する値の配列
+     * @return string
+     */
     private function restoreForm($html, $params) {
 
+        $match = array();
         preg_match_all("@<(input|textarea|select)(.+?)([\s/]*?)>(.*?</\\1>)?@ism", $html, $match, PREG_SET_ORDER);
 
         // タグごとに処理
         foreach ($match as $i => $tag) {
-            preg_match("/type=(\"|\')(.+?)\\1/i", $tag[0], $m_type);
-            preg_match("/name=(\"|\')(.+?)\\1/i", $tag[0], $m_name);
-            preg_match("/value=(\"|\')(.*?)\\1/i", $tag[0], $m_value);
+            $m_type = array();
+            $m_name = array();
+            $m_value = array();
+            preg_match("/type=([\"'])(.+?)\\1/i", $tag[0], $m_type);
+            preg_match("/name=([\"'])(.+?)\\1/i", $tag[0], $m_name);
+            preg_match("/value=([\"'])(.*?)\\1/i", $tag[0], $m_value);
 
             $fieldName = str_replace('[]', '', $m_name[2]);
             // 復元処理しないタグ
-            if ($fieldName == '_mode') continue;
+            if ($fieldName === '_mode') continue;
 
             switch($m_type[2]) {
                 // 復元処理しないタグ
@@ -331,7 +355,7 @@ class Class_cfFormMailer {
                 case 'button';
                 case 'reset';
                 case 'hidden';
-                continue 2;
+                    continue 2;
                 case 'checkbox';
                 case 'radio';
                     $fieldType = $m_type[2];
@@ -341,7 +365,7 @@ class Class_cfFormMailer {
             }
 
             // テキストボックス
-            if ($tag[1] == 'input' && $fieldType == 'text') {
+            if ($tag[1] === 'input' && $fieldType === 'text') {
                 if (count($m_value) > 1) {
                     $pat = $m_value[0];
                     $rep = 'value="' . $this->encodeHTML($params[$fieldName]).'"';
@@ -350,43 +374,64 @@ class Class_cfFormMailer {
                     $rep = $tag[2] . ' value="' . $this->encodeHTML($params[$fieldName]).'"';
                 }
             // チェックボックス
-            } elseif ($tag[1] == 'input' && $fieldType == 'checkbox') {
+            } elseif ($tag[1] === 'input' && $fieldType === 'checkbox') {
                 if ($m_value[2] == $params[$fieldName] || (is_array($params[$fieldName]) && in_array($m_value[2], $params[$fieldName]))) {
                     $pat = $tag[2];
                     $rep = $tag[2] . ' checked="checked"';
                 }
             // ラジオボタン
-            } elseif ($tag[1] == 'input' && $fieldType == 'radio') {
+            } elseif ($tag[1] === 'input' && $fieldType === 'radio') {
                 if ($m_value[2] == $params[$fieldName]) {
                     $pat = $tag[2];
                     $rep = $tag[2] . ' checked="checked"';
                 }
             // プルダウンリスト
-            } elseif ($tag[1] == 'select') {
+            } elseif ($tag[1] === 'select') {
                 $pat = $rep = '';
-                preg_match_all("/<option(.*?)value=('|\")(.*?)\\2(.*?>)/ism", $tag[4], $tag_opt, PREG_SET_ORDER);
+                $tag_opt = array();
+                preg_match_all("/<option(.*?)value=(['\"])(.*?)\\2(.*?>)/ism", $tag[4], $tag_opt, PREG_SET_ORDER);
                 if (count($tag_opt) > 1) {
                     $old = $tag[0];
-                    foreach ($tag_opt as $opt_k => $opt_v) {
-                        $def_deleted = preg_replace("/selected(=('|\")selected\\2)?/ism", '', $opt_v[0]);
-                        $tag[0] = str_replace($opt_v[0], $def_deleted, $tag[0]);
+                    foreach ($tag_opt as $opt_k => $opt_v) {$tag[0] = str_replace(
+                        $opt_v[0]
+                        , preg_replace("/selected(=(['\"])selected\\2)?/ism", '', $opt_v[0])
+                        , $tag[0]
+                    );
                         if ($opt_v[3] == $params[$fieldName]) {
-                            $tag[0] = str_replace($opt_v[0], str_replace($opt_v[4], ' selected="selected"'.$opt_v[4], $opt_v[0]), $tag[0]);
+                            $tag[0] = str_replace(
+                                $opt_v[0]
+                                , str_replace(
+                                    $opt_v[4]
+                                    , ' selected="selected"'.$opt_v[4]
+                                    , $opt_v[0]
+                                )
+                                , $tag[0]
+                            );
                         }
                     }
                     $new = $tag[0];
                     $html = str_replace($old, $new, $html);
                 }
             // 複数行テキスト
-            } elseif ($tag[1] == 'textarea') {
+            } elseif ($tag[1] === 'textarea') {
                 if ($params[$fieldName]) {
                     $pat = $tag[0];
-                    $rep = '<' . $tag[1] . $tag[2] . $tag[3] . '>' . $this->encodeHTML($params[$fieldName]) . '</textarea>';
+                    $rep = sprintf(
+                        '<%s%s%s>%s</textarea>'
+                        , $tag[1]
+                        , $tag[2]
+                        , $tag[3]
+                        , $this->encodeHTML($params[$fieldName])
+                    );
                 }
             }
 
             // HTMLタグのみを置換
-            $tag_new = ($rep && $pat) ? str_replace($pat, $rep, $tag[0]) : '';
+            if ($rep && $pat) {
+                $tag_new = str_replace($pat, $rep, $tag[0]);
+            } else {
+                $tag_new = '';
+            }
             // HTML全文を置換
             $html = ($tag_new) ? str_replace($tag[0], $tag_new, $html) : $html;
         }
@@ -394,21 +439,21 @@ class Class_cfFormMailer {
     }
 
     /**
-    * メール送信
-    * 
-    * @access public
-    * @param  void
-    * @return boolean 結果 
-    */
+     * メール送信
+     *
+     * @access public
+     * @param  void
+     * @return boolean 結果
+     */
     public function sendMail() {
 
         // send_mail環境設定が0の場合は送信しない
-        if (defined('SEND_MAIL') && !SEND_MAIL) {
+        if (!$this->cfg['send_mail']) {
             return true;
         }
 
         // 改行コードの設定
-        if (defined('LF_STYLE') && LF_STYLE == 1) {
+        if ($this->cfg['lf_style']) {
             $this->lf = "\r\n";
         } else {
             $this->lf = "\n";
@@ -420,7 +465,7 @@ class Class_cfFormMailer {
             $this->setError('フォームが取得できません');return false;
         }
         // 送信メールの文字コード
-        if (defined('MAIL_CHARSET') && MAIL_CHARSET) {
+        if ($this->cfg['mail_charset']) {
             $mailCharset = MAIL_CHARSET;
         } else {
             $mailCharset = 'iso-2022-jp';
@@ -428,12 +473,12 @@ class Class_cfFormMailer {
 
         // 管理者メールアドレス特定
         $admin_addresses = array();
-        if (defined('DYNAMIC_SEND_TO_FIELD') && DYNAMIC_SEND_TO_FIELD && count($this->dynamic_send_to)) {
-            if ($this->form[DYNAMIC_SEND_TO_FIELD]) {
-                $mails = explode(',', $this->dynamic_send_to[$this->form[DYNAMIC_SEND_TO_FIELD]]);
-            }
+        if ($this->cfg['dynamic_send_to_field']
+            && count($this->dynamic_send_to)
+            && $this->form[$this->cfg['dynamic_send_to_field']]) {
+                $mails = explode(',', $this->dynamic_send_to[$this->form[$this->cfg['dynamic_send_to_field']]]);
         } else {
-            $mails = explode(',', ADMIN_MAIL);
+            $mails = explode(',', $this->cfg['admin_mail']);
         }
 
         foreach ($mails as $buf) {
@@ -455,28 +500,28 @@ class Class_cfFormMailer {
 
         $reply_to = $this->getAutoReplyAddress();
 
-        $join = ALLOW_HTML ? '<br />' : "\n";
+        $join = $this->cfg['allow_html'] ? '<br />' : "\n";
 
         // 管理者宛メールの本文生成
-        if (!$tmpl = $this->loadTemplate(TMPL_MAIL_ADMIN)) {
+        if (!$tmpl = $this->loadTemplate($this->cfg['tmpl_mail_admin'])) {
             $this->setError('メールテンプレートの読み込みに失敗しました');
             return false;
         }
         $tmpl = str_replace(array("\r\n", "\r"), "\n", $tmpl);
         $form = $this->form;
-        if (ADMIN_ISHTML) {
-            $form = ALLOW_HTML ? $this->nl2br_array($form) : $this->encodeHTML($form, 'true');
+        if ($this->cfg['admin_ishtml']) {
+            $form = $this->cfg['allow_html'] ? $this->nl2br_array($form) : $this->encodeHTML($form, 'true');
         }
-        $tmpl = $this->replacePlaceHolder($tmpl, ($form + $additional), $join);
+        $tmpl = $this->replacePlaceHolder($tmpl, $form + $additional, $join);
         $tmpl = $this->clearPlaceHolder($tmpl);
 
         // 自動返信メールの本文生成
-        if (AUTO_REPLY && $reply_to) {
+        if ($this->cfg['auto_reply'] && $reply_to) {
             // モバイル用のテンプレート切り替え
-            if (defined('TMPL_MAIL_REPLY_MOBILE') && TMPL_MAIL_REPLY_MOBILE && preg_match("/(docomo\.ne\.jp|ezweb\.ne\.jp|softbank\.ne\.jp|vodafone\.ne\.jp|disney\.ne\.jp|pdx\.ne\.jp|willcom\.com|emnet\.ne\.jp)$/", $reply_to)) {
-                $template_filename = TMPL_MAIL_REPLY_MOBILE;
+            if ($this->cfg['tmpl_mail_reply_mobile'] && preg_match("/(docomo\.ne\.jp|ezweb\.ne\.jp|softbank\.ne\.jp|vodafone\.ne\.jp|disney\.ne\.jp|pdx\.ne\.jp|willcom\.com|emnet\.ne\.jp)$/", $reply_to)) {
+                $template_filename = $this->cfg['tmpl_mail_reply_mobile'];
             } else {
-                $template_filename = TMPL_MAIL_REPLY;
+                $template_filename = $this->cfg['tmpl_mail_reply'];
             }
             if (!$tmpl_u = $this->loadTemplate($template_filename)) {
                 $this->setError('メールテンプレートの読み込みに失敗しました');
@@ -484,97 +529,106 @@ class Class_cfFormMailer {
             }
             $tmpl_u = str_replace(array("\r\n", "\r"), "\n", $tmpl_u);
             $form_u = $this->form;
-            if (REPLY_ISHTML) {
-                $form_u = ALLOW_HTML ? $this->nl2br_array($form_u) : $this->encodeHTML($form_u, 'true');
+            if ($this->cfg['reply_ishtml']) {
+                $form_u = $this->cfg['allow_html'] ? $this->nl2br_array($form_u) : $this->encodeHTML($form_u, 'true');
             }
-            $tmpl_u = $this->replacePlaceHolder($tmpl_u, ($form_u + $additional), $join);
+            $tmpl_u = $this->replacePlaceHolder($tmpl_u, $form_u + $additional, $join);
             $tmpl_u = $this->clearPlaceHolder($tmpl_u);
         }
 
         // 管理者宛送信
-        $this->modx->loadExtension('MODxMailer');
-        $pm = &$this->modx->mail;
+        evo()->loadExtension('MODxMailer');
+        $pm = &evo()->mail;
         foreach ($admin_addresses as $v) {
             $pm->AddAddress($v);
         }
-        if (defined('ADMIN_MAIL_CC') && ADMIN_MAIL_CC) {
-            foreach (explode(',', ADMIN_MAIL_CC) as $v) {
+        if ($this->cfg['admin_mail_cc']) {
+            foreach (explode(',', $this->cfg['admin_mail_cc']) as $v) {
                 $v = trim($v);
                 if ($this->_isValidEmail($v)) {
                     $pm->AddCC($v);
                 }
             }
         }
-        if (defined('ADMIN_MAIL_BCC') && ADMIN_MAIL_BCC) {
-            foreach (explode(',', ADMIN_MAIL_BCC) as $v) {
+        if ($this->cfg['admin_mail_bcc']) {
+            foreach (explode(',', $this->cfg['admin_mail_bcc']) as $v) {
                 $v = trim($v);
                 if ($this->_isValidEmail($v)) {
                     $pm->AddBCC($v);
                 }
             }
         }
-        $subject = (ADMIN_SUBJECT) ? ADMIN_SUBJECT : 'サイトから送信されたメール';
+        $subject = $this->cfg['admin_subject'] ? $this->cfg['admin_subject'] : 'サイトから送信されたメール';
         $pm->Subject = $subject;
-        if (defined('ADMIN_NAME') && ADMIN_NAME) {
-            $pm->FromName = $this->modx->parseText(ADMIN_NAME,$this->form);
-        } else {
-            $pm->FromName = '';
+        $pm->setFrom(
+            $admin_addresses[0]
+            , ($this->cfg['admin_name']) ? evo()->parseText($this->cfg['admin_name'],$this->form) : ''
+        );
+        if ($reply_to) {
+            $pm->addReplyTo($reply_to);
         }
-        //$pm->From = ($reply_to ? $reply_to : ADMIN_MAIL);
-        $pm->From = defined('REPLY_FROM') && REPLY_FROM ? REPLY_FROM : ADMIN_MAIL;  // #通知メールの差出人は自動返信と同様をデフォルトに。
         $pm->Sender = $pm->From;
-        $pm->Body = mb_convert_encoding($tmpl, $mailCharset, CHARSET);
+        $pm->Body = mb_convert_encoding($tmpl, $mailCharset, $this->cfg['charset']);
         $pm->Encoding = '7bit';
         // ユーザーからのファイル送信
         if (isset($_SESSION['_cf_uploaded']) && count($_SESSION['_cf_uploaded'])) {
             $upload_flag = true;
             foreach ($_SESSION['_cf_uploaded'] as $attach_file) {
                 if (is_file($attach_file['path'])) {
-                $filename = urldecode(basename($attach_file['path']));
-                    $pm->AddAttachment($attach_file['path'], mb_convert_encoding($filename, $mailCharset, CHARSET));
+                    $filename = urldecode(basename($attach_file['path']));
+                    $pm->AddAttachment($attach_file['path'], mb_convert_encoding($filename, $mailCharset, $this->cfg['charset']));
                 }
             }
         }
-        if ($pm->Send() == false) {
+        if (!$pm->Send()) {
             $errormsg = 'メール送信に失敗しました::' . $pm->ErrorInfo;
             $this->setError($errormsg);
             $vars = var_export($pm,true);
-            $vars = nl2br(htmlspecialchars($vars));
-            $this->modx->logEvent(1, 3,$errormsg.$vars);
+            $vars = nl2br(evo()->htmlspecialchars($vars));
+            evo()->logEvent(1, 3,$errormsg.$vars);
             return false;
-        } else {
-            if(isset($_SESSION['_cf_autosave'])) unset($_SESSION['_cf_autosave']);
+        }
+
+        if(isset($_SESSION['_cf_autosave'])) {
+            unset($_SESSION['_cf_autosave']);
         }
 
         // 自動返信
-        if (AUTO_REPLY && $reply_to) {
-            $this->modx->loadExtension('MODxMailer');
-            $pm = &$this->modx->mail;
-            $reply_from = defined('REPLY_FROM') && REPLY_FROM ? REPLY_FROM : $admin_addresses[0];
-            $this->modx->loadExtension('MODxMailer');
-            $pm = &$this->modx->mail;
+        if ($this->cfg['auto_reply'] && $reply_to) {
+            evo()->loadExtension('MODxMailer');
+            $pm = &evo()->mail;
             $pm->AddAddress($reply_to);
-            $subject = (REPLY_SUBJECT) ? REPLY_SUBJECT : '自動返信メール';
+            $subject = $this->cfg['reply_subject'] ?: '自動返信メール';
             $pm->Subject = $subject;
-            $pm->FromName = REPLY_FROMNAME;
-            $pm->From = $reply_from;
-            $pm->Sender = $reply_from;
-            $pm->Body = mb_convert_encoding($tmpl_u, $mailCharset, CHARSET);
+            $pm->setFrom(
+                $this->getConfig('reply_from', $admin_addresses[0])
+                , $this->getConfig('reply_fromname')
+            );
+            $pm->Sender = $pm->From;
+            $pm->Body = mb_convert_encoding($tmpl_u, $mailCharset, $this->cfg['charset']);
             $pm->Encoding = '7bit';
             // 添付ファイル処理
-            if (defined('ATTACH_FILE') && ATTACH_FILE && @file_exists(ATTACH_FILE)) {
-                if (defined('ATTACH_FILE_NAME') && ATTACH_FILE_NAME) {
-                    $pm->AddAttachment(ATTACH_FILE, mb_convert_encoding(ATTACH_FILE_NAME, $mailCharset, CHARSET));
+            if ($this->cfg['attach_file'] && is_file($this->cfg['attach_file'])) {
+                if ($this->cfg['attach_file_name']) {
+                    $pm->AddAttachment(
+                        $this->cfg['attach_file']
+                        , mb_convert_encoding($this->cfg['attach_file_name']
+                            , $mailCharset, $this->cfg['charset']
+                        ));
                 } else {
-                    $pm->AddAttachment(ATTACH_FILE);
+                    $pm->AddAttachment($this->cfg['attach_file']);
                 }
             }
             // ユーザーからのファイル送信
             if ($upload_flag) {
                 foreach ($_SESSION['_cf_uploaded'] as $attach_file) {
-                    if (!is_file($attach_file['path'])) continue;
+                    if (!is_file($attach_file['path'])) {
+                        continue;
+                    }
                     $filename = urldecode(basename($attach_file['path']));
-                    $pm->AddAttachment($attach_file['path'], mb_convert_encoding($filename, $mailCharset, CHARSET));
+                    $pm->AddAttachment(
+                        $attach_file['path']
+                        , mb_convert_encoding($filename, $mailCharset, $this->cfg['charset']));
                 }
             }
 
@@ -592,8 +646,8 @@ class Class_cfFormMailer {
                 $errormsg = 'メール送信に失敗しました::' . $pm->ErrorInfo;
                 $this->setError($errormsg);
                 $vars = var_export($pm,true);
-                $vars = nl2br(htmlspecialchars($vars));
-                $this->modx->logEvent(1, 3,$errormsg.$vars);
+                $vars = nl2br(evo()->htmlspecialchars($vars));
+                evo()->logEvent(1, 3,$errormsg.$vars);
                 return false;
             }
         }
@@ -602,12 +656,12 @@ class Class_cfFormMailer {
     }
 
     /**
-    * トークンをチェック
-    * 
-    * @access public
-    * @param  void
-    * @return boolean 結果
-    */
+     * トークンをチェック
+     *
+     * @access public
+     * @param  void
+     * @return boolean 結果
+     */
     public function isValidToken() {
         $token = @$_SESSION['_cffm_token'];
         unset($_SESSION['_cffm_token']);
@@ -615,28 +669,29 @@ class Class_cfFormMailer {
     }
 
     /**
-    * すでに送信済みかどうかをチェック
-    * 
-    * @access public
-    * @param  void
-    * @return boolean 結果
-    */
+     * すでに送信済みかどうかをチェック
+     *
+     * @access public
+     * @param  void
+     * @return boolean 結果
+     */
     public function isMultiple() {
         return ($this->form === $_SESSION['_cffm_recently_send']);
     }
 
     /**
-    * <iferror></iferror> タグの処理
-    * 
-    * @access private
-    * @param  string $html   HTML text of a substitution object
-    * @param  array  $errors error messages
-    * @return string HTML text after substitution
-    */
+     * <iferror></iferror> タグの処理
+     *
+     * @access private
+     * @param  string $html   HTML text of a substitution object
+     * @param  array  $errors error messages
+     * @return string HTML text after substitution
+     */
     private function assignErrorTag($html, $errors) {
         if (!is_array($errors)) {
             return $html;
         }
+        $match = array();
         preg_match_all("@<iferror\.?([^>]+?)?>(.+?)</iferror>@ism", $html, $match, PREG_SET_ORDER);
 
         if (!count($match)) return $html;
@@ -644,21 +699,22 @@ class Class_cfFormMailer {
         foreach ($match as $tag) {
             if (!empty($tag[1])) {
                 // グルーピングされたタグの処理
+                $g_match = array();
                 if (preg_match("/^\((.+?)\)$/", $tag[1], $g_match)) {
                     $groups = explode(',', $g_match[1]);
                     $isErr = 0;
                     foreach($groups as $group) {
                         $group = strtr($group, array(' ' => ''));
-                        $isErr = ($errors['error.' . $group]) ? 1 : $isErr;
+                        $isErr = $errors['error.' . $group] ? 1 : $isErr;
                     }
                     if ($isErr) {
                         $html = str_replace($tag[0], $tag[2], $html);
                     }
                     // 個別タグの処理
-                    } elseif (isset($errors['error.' . $tag[1]])) {
-                        $html = str_replace($tag[0], $tag[2], $html);
-                    }
-                } else {
+                } elseif (isset($errors['error.' . $tag[1]])) {
+                    $html = str_replace($tag[0], $tag[2], $html);
+                }
+            } else {
                 // エラー全体の処理
                 if (count($errors)) {
                     $html = str_replace($tag[0], $tag[2], $html);
@@ -669,34 +725,33 @@ class Class_cfFormMailer {
     }
 
     /**
-    * エラーのあるフォーム項目にクラスセレクタを付加
-    *
-    * @access private
-    * @param string $html   付加対象のHTML文書
-    * @param array  $errors フォームエラーメッセージ
-    * @return string 処理後のHTML文書
-    */
+     * エラーのあるフォーム項目にクラスセレクタを付加
+     *
+     * @access private
+     * @param string $html   付加対象のHTML文書
+     * @param array  $errors フォームエラーメッセージ
+     * @return string 処理後のHTML文書
+     */
     private function assignErrorClass($html, $errors) {
-        if (!defined('INVALID_CLASS') || INVALID_CLASS == '') return $html;
+        if (!$this->cfg['invalid_class']) return $html;
 
         if (count($errors) < 2) return $html;
 
         // エラーのあるフィールド名リストを作成
         if (isset($errors['errors'])) unset($errors['errors']);
         $keys = array_unique(array_keys($errors));
-        $keys = array_map(create_function('$a', 'return str_replace("error.", "", $a);'), $keys);
-
         foreach ($keys as $field) {
-            $pattern = "#<(input|textarea|select)[^>]*?name=(\"|\'){$field}\\2[^/>]*/?>#im";
+            $field = str_replace('error.', '', $field);
+            $pattern = "#<(input|textarea|select)[^>]*?name=(\"|\')" . $field . "\\2[^/>]*/?>#im";
             if (preg_match_all($pattern, $html, $match, PREG_SET_ORDER)) {
                 foreach ($match as $m) {
                     // クラスを定義済みの場合は最後に追加
-                    if (preg_match("/class=(\"|\')(.+?)\\1/", $m[0], $match_classes)) {
-                        $newClass = 'class=' . $match_classes[1] . $match_classes[2] . ' ' . INVALID_CLASS . $match_classes[1];
+                    if (preg_match("/class=([\"'])(.+?)\\1/", $m[0], $match_classes)) {
+                        $newClass = 'class=' . $match_classes[1] . $match_classes[2] . ' ' . $this->cfg['invalid_class'] . $match_classes[1];
                         $rep = str_replace($match_classes[0], $newClass, $m[0]);
                         // そうでなければ class 要素を追加
                     } else {
-                        $rep = preg_replace("#\s*/?>$#", '', $m[0]) . sprintf(' class="%s"', INVALID_CLASS) . ($m[1] == 'input' ? ' /' : '') . '>';
+                        $rep = preg_replace("#\s*/?>$#", '', $m[0]) . sprintf(' class="%s"', $this->cfg['invalid_class']) . ($m[1] === 'input' ? ' /' : '') . '>';
                     }
                     $html = str_replace($m[0], $rep, $html);
                 }
@@ -706,59 +761,61 @@ class Class_cfFormMailer {
     }
 
     /**
-    * サイトで使用する文字コードに変換
-    * 
-    * @access private
-    * @param  mixed $text 変換するテキスト
-    * @return mixed 変換後のテキスト
-    */
+     * サイトで使用する文字コードに変換
+     *
+     * @access private
+     * @param  mixed $text 変換するテキスト
+     * @return mixed 変換後のテキスト
+     */
     private function convertText($text) {
         if (is_array($text)) {
             foreach ($text as $k => $v) {
                 $text[$k] = $this->convertText($v);
             }
-        } elseif (strtolower(CHARSET) != 'utf-8') {
-            $text = mb_convert_encoding($text, CHARSET, 'utf-8');
+        } elseif (strtolower($this->cfg['charset']) !== 'utf-8') {
+            $text = mb_convert_encoding($text, $this->cfg['charset'], 'utf-8');
         }
         return $text;
     }
 
     /**
-    * 文字コードをシステムに合わせる
-    *  - （UTF-8 以外の文字コードを UTF-8 に変換）
-    * 
-    * @param  string 変換するテキスト
-    * @return string 変換後のテキスト 
-    */
+     * 文字コードをシステムに合わせる
+     *  - （UTF-8 以外の文字コードを UTF-8 に変換）
+     *
+     * @param  string 変換するテキスト
+     * @return string 変換後のテキスト
+     */
     private function adaptEncoding($text) {
-        
-        if (strtolower(CHARSET) == 'utf-8') return $text;
+
+        if (strtolower($this->cfg['charset']) === 'utf-8') return $text;
 
         if (is_array($text)) {
             $text = array_map($this->adaptEncoding, $text);
         } else {
-            $text = mb_convert_encoding($text, 'utf-8', CHARSET);
+            $text = mb_convert_encoding($text, 'utf-8', $this->cfg['charset']);
         }
         return $text;
     }
 
     /**
-    * HTMLエンコード
-    *
-    * @access private
-    * @param  mixed   $text  変換するテキスト（または配列）
-    * @param  boolean $nl2br TRUE の場合、改行コードを<br />に変換　（Default: FALSE）
-    * @return mixed 変換後のテキストまたは配列
-    */
+     * HTMLエンコード
+     *
+     * @access private
+     * @param  mixed   $text  変換するテキスト（または配列）
+     * @param  boolean $nl2br TRUE の場合、改行コードを<br />に変換　（Default: FALSE）
+     * @return mixed 変換後のテキストまたは配列
+     */
     private function encodeHTML($text, $nl2br = '') {
         if (is_array($text)) {
             foreach ($text as $k => $v) {
                 $text[$k] = $this->encodeHTML($v, $nl2br);
             }
         } else {
-            $text = htmlspecialchars($text, ENT_QUOTES);
+            $text = evo()->htmlspecialchars($text, ENT_QUOTES);
             $text = $this->convertjp($text);
-            $text = ($nl2br) ? nl2br($text) : $text;
+            if ($nl2br) {
+                $text = nl2br($text);
+            }
         }
         return $text;
     }
@@ -837,82 +894,118 @@ class Class_cfFormMailer {
         $char['㍾'] = '明治';
         $char['㍽'] = '大正';
         $char['㍼'] = '昭和';
-        
+
         return str_replace(array_keys($char), array_values($char), $text);
     }
 
     /**
-    * 改行コードを<br />タグに変換
-    * 
-    * @param mixed $text 変換するテキスト（または配列）
-    * @return mixed 変換後のテキストまたは配列 
-    */
+     * 改行コードを<br />タグに変換
+     *
+     * @param mixed $text 変換するテキスト（または配列）
+     * @return mixed 変換後のテキストまたは配列
+     */
     public function nl2br_array($text) {
         if (is_array($text)) {
-            $text = array_map(array($this, 'nl2br_array'), $text);
-        } else {
-            $text = nl2br($text);
+            return array_map(array($this, 'nl2br_array'), $text);
         }
-        return $text;
+
+        return nl2br($text);
     }
 
     /**
-    * テンプレートチャンクの読み込み
-    *
-    * @access private
-    * @param  string $name チャンク名・またはリソースID
-    * @return string 読み込んだデータ
-    */
-    private function loadTemplate($name) {
-        if (preg_match('/^[1-9][0-9]*$/', $name)) {
-            $html = ($resource = $this->modx->getDocumentObject('id', $name)) ? $resource['content'] : false; // thanks to yama
-        } else {
-            $html = ($tmpl = $this->modx->getChunk($name)) ? $tmpl : false;
+     * テンプレートチャンクの読み込み
+     *
+     * @access private
+     * @param  string $tpl_name チャンク名・またはリソースID
+     * @return string 読み込んだデータ
+     */
+    private function loadTemplate($tpl_name) {
+        $tpl_name = trim($tpl_name);
+        if (preg_match('/^@FILE:.+/', $tpl_name)) {
+            $tpl_path = CFM_PATH . trim(substr($tpl_name, 6));
+            if(is_file($tpl_path)) {
+                return $this->parseDocumentSource(
+                    file_get_contents($tpl_path)
+                );
+            }
+            $tpl_path = MODX_BASE_PATH . trim(substr($tpl_name, 6));
+            if(is_file($tpl_path)) {
+                return $this->parseDocumentSource(file_get_contents($tpl_path));
+            }
+        } elseif (preg_match('/^[1-9][0-9]*$/', $tpl_name)) {
+            $doc = $this->getDocument($tpl_name);
+            if(isset($doc['content']) && $doc['content']) {
+                return $this->parseDocumentSource($doc['content']);
+            }
+        } else if($content = evo()->getChunk($tpl_name)) {
+            return $this->parseDocumentSource($content);
         }
-        if ($html) {
-            if(strpos($html,'[!')!==false) $html = str_replace(array('[!','!]'),array('[[',']]'),$html);
-            $html = $this->modx->parseDocumentSource($html);
-            return $html;
-        } else {
-            $this->setError('Chunk read error');
+
+        $error = 'tpl read error';
+        if($tpl_name) {
+            $error .= sprintf(' (%s)', $tpl_name);
+        }
+        $this->setError($error);
+        return false;
+    }
+
+    private function parseDocumentSource($content) {
+        if(strpos($content,'[!')!==false) {
+            $content = str_replace(array('[!','!]'),array('[[',']]'),$content);
+        }
+        return evo()->parseDocumentSource($content);
+    }
+
+    private function getDocument($docid) {
+        $rs = db()->select(
+            '*'
+            , '[+prefix+]site_content'
+            , 'id=' . $docid
+            , ''
+            , 1
+        );
+        $doc = db()->getRow($rs);
+        if(!$doc) {
             return false;
         }
+        return $doc;
     }
-
     /**
-    * プレースホルダを置換
-    *
-    * @access private
-    * @param  string $text HTMLテキスト
-    * @param  array  $params 置換するデータ
-    *                         (プレースホルダ名) => (値)
-    * @param  string $join 値が配列の場合に連結に使用する文字列
-    * @return string プレースホルダが置換された文字列
-    */
+     * プレースホルダを置換
+     *
+     * @access private
+     * @param  string $text HTMLテキスト
+     * @param  array  $params 置換するデータ
+     *                         (プレースホルダ名) => (値)
+     * @param  string $join 値が配列の場合に連結に使用する文字列
+     * @return string プレースホルダが置換された文字列
+     */
     private function replacePlaceHolder($text, $params, $join = '<br />') {
-        global $modx;
+        if (!is_array($params) || !$text) {
+            return false;
+        }
 
-        if (!is_array($params) || !$text) return false;
+        preg_match_all("/\[\+([^+|]+)(\|(.*?)(\((.+?)\))?)?\+]/is", $text, $match, PREG_SET_ORDER);
+        if (!count($match)) {
+            return $text;
+        }
 
-        preg_match_all("/\[\+([^\+\|]+)(\|(.*?)(\((.+?)\))?)?\+\]/is", $text, $match, PREG_SET_ORDER);
-        if (!count($match)) return $text;
-
-        //1.0.15J以降 $modx->config['output_filter']は廃止
         $toFilter = true;
         //旧バージョン用
-        if(isset($modx->config['output_filter']) &&$modx->config['output_filter']==='0') {
+        if(isset(evo()->config['output_filter']) &&evo()->config['output_filter']==='0') {
             $toFilter = false;
         }
 
-        if($toFilter) $modx->loadExtension('PHx') or die('Could not load PHx class.');
+        if($toFilter) evo()->loadExtension('PHx') or die('Could not load PHx class.');
 
         // 基本プレースホルダ
         $replaceKeys = array_keys($params);
         foreach ($match as $m) {
             if($toFilter && strpos($m[1],':')!==false) {
                 list($m[1],$modifiers) = explode(':', $m[1], 2);
+            } else {
+                $modifiers = false;
             }
-            else $modifiers = false;
 
             if (!in_array($m[1], $replaceKeys)) continue;
 
@@ -922,7 +1015,7 @@ class Class_cfFormMailer {
                 if($val==='&nbsp;') {
                     $val = '';
                 }
-                $val = $modx->filter->phxFilter($m[1],$val,$modifiers);
+                $val = evo()->filter->phxFilter($m[1],$val,$modifiers);
                 if($val==='') $val = '&nbsp;';
             }
             $rep = '';
@@ -938,7 +1031,7 @@ class Class_cfFormMailer {
                 }
             // フィルター無し
             } else {
-                $rep = (is_array($val)) ? implode($join, $val) : $val;
+                $rep = is_array($val) ? implode($join, $val) : $val;
             }
 
             $text = str_replace($m[0], $rep, $text);
@@ -948,22 +1041,22 @@ class Class_cfFormMailer {
     }
 
     /**
-    * 全てのプレースホルダを削除
-    * 
-    * @param string $text 対象となるHTML
-    * @return string [+variable_name+]削除後のHTML
-    */
+     * 全てのプレースホルダを削除
+     *
+     * @param string $text 対象となるHTML
+     * @return string [+variable_name+]削除後のHTML
+     */
     private function clearPlaceHolder($text) {
-        return preg_replace("/\[\+.+?\+\]/ism", '', $text);
+        return preg_replace("/\[\+.+?\+]/ism", '', $text);
     }
 
     /**
-    * NULL 値を文字列に変換
-    *
-    * @param mixed $data 変換するデータ
-    * @param string $string 変換される文字列(Default: &nbsp;)
-    * @return mixed 変換後のデータ
-    */
+     * NULL 値を文字列に変換
+     *
+     * @param mixed $data 変換するデータ
+     * @param string $string 変換される文字列(Default: &nbsp;)
+     * @return mixed 変換後のデータ
+     */
     private function convertNullToStr($data, $string = '&nbsp;') {
         if (is_array($data)) {
             foreach ($data as $k => $v) {
@@ -976,63 +1069,76 @@ class Class_cfFormMailer {
     }
 
     /**
-    * 認証コード用画像の URI を取得
-    * 
-    * @access private
-    * @param void
-    * @return string 認証コード画像の URI
-    */
+     * 認証コード用画像の URI を取得
+     *
+     * @access private
+     * @param void
+     * @return string 認証コード画像の URI
+     */
     private function getCaptchaUri() {
-        if(is_file($this->modx->config['base_path'] . 'captcha.php')) {
-            $captchalib = 'captcha.php';
+        if (is_file(MODX_BASE_PATH . 'captcha.php')) {
+            return MODX_BASE_URL . 'captcha.php';
         }
-        elseif(is_file(MODX_MANAGER_PATH.'media/captcha/veriword.php')) {
-            $captchalib = 'index.php?get=captcha';
-        }
-        else
-            $captchalib = 'manager/includes/veriword.php?tmp=' . mt_rand();
 
-        return $this->modx->config['base_url']  . $captchalib;
+        if(is_file(MODX_MANAGER_PATH.'media/captcha/veriword.php')) {
+            return MODX_BASE_URL . 'index.php?get=captcha';
+        }
+
+        return MODX_BASE_URL . 'manager/includes/veriword.php?tmp=' . mt_rand();
     }
 
     /**
-    * <form></form>タグ内に入力値を hidden 属性で埋め込む
-    * 
-    * @access private
-    * @param  string $html 対象となるHTML文書
-    * @param  array  $form 埋め込むデータ
-    * @return string 埋め込み後のHTML文書
-    */
+     * <form></form>タグ内に入力値を hidden 属性で埋め込む
+     *
+     * @access private
+     * @param  string $html 対象となるHTML文書
+     * @param  array  $form 埋め込むデータ
+     * @return string 埋め込み後のHTML文書
+     */
     private function addHiddenTags($html, $form) {
-        if (!is_array($form)) return $html;
-        if (isset($form['_mode'])) unset($form['_mode']);
+        if (!is_array($form)) {
+            return $html;
+        }
+        if (isset($form['_mode'])) {
+            unset($form['_mode']);
+        }
         $tag = array();
         foreach ($form as $k => $v) {
-            if (is_array($v)) {
-                foreach ($v as $subv) {
-                    $tag[] = sprintf('<input type="hidden" name="%s[]" value="%s" />',$this->encodeHTML($k),$this->encodeHTML($subv));
-                }
-            } else {
-                $tag[] = sprintf('<input type="hidden" name="%s" value="%s" />',$this->encodeHTML($k),$this->encodeHTML($v));
+            if (!is_array($v)) {
+                $tag[] = sprintf(
+                    '<input type="hidden" name="%s" value="%s" />'
+                    , $this->encodeHTML($k)
+                    , $this->encodeHTML($v)
+                );
+                continue;
+            }
+            foreach ($v as $subv) {
+                $tag[] = sprintf(
+                    '<input type="hidden" name="%s[]" value="%s" />'
+                    , $this->encodeHTML($k)
+                    , $this->encodeHTML($subv)
+                );
             }
         }
         return str_replace('</form>', join("\n",$tag) . '</form>', $html);
     }
 
     /**
-    * 投稿されたデータの初期処理
-    *
-    * @access private
-    * @param  array $array データ 
-    * @return array 初期処理の終わったデータ
-    */
+     * 投稿されたデータの初期処理
+     *
+     * @access private
+     * @param  array $array データ
+     * @return array 初期処理の終わったデータ
+     */
     private function getFormVariables($array) {
 
-        if (!is_array($array)) return;
+        if (!is_array($array)) {
+            return array();
+        }
 
         $ret = array();
         foreach ($array as $k => $v) {
-            if (!is_int($k) && ($k == '_mode' || $k == '_cffm_token')) continue;
+            if (!is_int($k) && ($k === '_mode' || $k === '_cffm_token')) continue;
             if (is_array($v)) {
                 $v = $this->getFormVariables($v);
             } else {
@@ -1049,35 +1155,29 @@ class Class_cfFormMailer {
     }
 
     /**
-    * <form></form>タグ内を解析し、検証メソッド等を取得する
-    *
-    * @access private
-    * @param  string $html 解析対象のHTML文書
-    * @return boolean 解析失敗の場合は false
-    */
+     * <form></form>タグ内を解析し、検証メソッド等を取得する
+     *
+     * @access private
+     * @param  string $html 解析対象のHTML文書
+     * @return boolean 解析失敗の場合は false
+     */
     private function parseForm($html) {
         $html = $this->extractForm($html, '');
         if ($html === false) {
             return false;
         }
 
-        $methods = array();
-        preg_match_all("/<(input|textarea|select).*?name=(\"|\')(.+?)\\2.*?>/i", $html, $match, PREG_SET_ORDER);
+        preg_match_all(
+            "/<(input|textarea|select).*?name=([\"'])(.+?)\\2.*?>/i"
+            , $html
+            , $match
+            , PREG_SET_ORDER
+        );
+
         foreach ($match as $v) {
 
-            // 項目名を取得
-            $fieldName = str_replace('[]', '', $v[3]);
-
-            // 項目タイプを取得
-            if ($v[1] == 'input') {
-                preg_match("/type=(\"|\')(.+?)\\1/", $v[0], $t_match);
-                $type = $t_match[2];
-            } else {
-                $type = $v[1];
-            }
-
             // 検証メソッドを取得
-            if (preg_match("/valid=(\"|\')(.+?)\\1/", $v[0], $v_match)) {
+            if (preg_match("/valid=([\"'])(.+?)\\1/", $v[0], $v_match)) {
                 list($required, $method, $param) = explode(':', $v_match[2]);
             } else {
                 $required = $method = $param = '';
@@ -1086,126 +1186,175 @@ class Class_cfFormMailer {
             // 項目名の取得
             if ($param) {
                 $label = $param;
-            } else {
-                // label を取得  (from v0.0.4)
-                if (preg_match("/id=(\"|\')(.+?)\\1/", $v[0], $l_match)) {
-                    $pattern = "@<label for=(\"|\'){$l_match[2]}\\1.*>(.+?)</label>@";
-                    if (preg_match($pattern, $html, $match_label)) {
-                        $label = $match_label[2];
-                    } else {
-                        $label = '';
-                    }
+            } elseif (preg_match("/id=([\"'])(.+?)\\1/", $v[0], $l_match)) {
+                if (preg_match(
+                    "@<label for=([\"']){$l_match[2]}\\1.*>(.+?)</label>@"
+                    , $html
+                    , $match_label
+                )) {
+                    $label = $match_label[2];
+                } else {
+                    $label = '';
                 }
+            } else {
+                $label = '';
             }
 
+            $methods = array();
+            $fieldName = str_replace('[]', '', $v[3]); // 項目名を取得
             if (!isset($methods[$fieldName])) {
-                $methods[$fieldName] = array('type' => $type, 'required' => $required, 'method' => $method, 'param' => $param, 'label' => $label);
+                $methods[$fieldName] = array(
+                    'type'     => $this->_get_input_type($v),
+                    'required' => $required,
+                    'method'   => $method,
+                    'param'    => $param,
+                    'label'    => $label
+                );
             }
         }
         $this->parsedForm = $methods;
 
         // 送信先動的変更のためのデータ取得(from v1.3)
-        if (defined('DYNAMIC_SEND_TO_FIELD') && DYNAMIC_SEND_TO_FIELD && isset($methods[DYNAMIC_SEND_TO_FIELD])) {
+        if ($this->cfg['dynamic_send_to_field'] && isset($methods[$this->cfg['dynamic_send_to_field']])) {
             $m_options = array();
-            if ($methods[DYNAMIC_SEND_TO_FIELD]['type'] == 'select') {
-                preg_match("@<select.*?name=(\"|\')" . DYNAMIC_SEND_TO_FIELD . "\\1.*?>(.+?)</select>@ims", $html, $matches);
+            if ($methods[$this->cfg['dynamic_send_to_field']]['type'] === 'select') {
+                preg_match(
+                    sprintf(
+                        "@<select.*?name=(\"|\')%s\\1.*?>(.+?)</select>@ims"
+                        , $this->cfg['dynamic_send_to_field']
+                    )
+                    , $html
+                    , $matches
+                );
                 if ($matches[2]) {
-                    preg_match_all("@<option.+?</option>@ims", $matches[2], $m_options);
+                    preg_match_all(
+                        "@<option.+?</option>@ims"
+                        , $matches[2]
+                        , $m_options
+                    );
                 }
-            } elseif ($methods[DYNAMIC_SEND_TO_FIELD]['type'] == 'radio') {
-                preg_match_all("/<input.*?name=(\"|\')" . DYNAMIC_SEND_TO_FIELD . "\\1.*?>/im", $html, $m_options);
+            } elseif ($methods[$this->cfg['dynamic_send_to_field']]['type'] === 'radio') {
+                preg_match_all(
+                    sprintf(
+                        "/<input.*?name=(\"|\')%s\\1.*?>/im"
+                        , $this->cfg['dynamic_send_to_field']
+                    )
+                    , $html
+                    , $m_options
+                );
             }
-            if ($m_options[0] && count($m_options[0])) {
-                foreach ($m_options[0] as $m_option) {
-                    preg_match_all("/(value|sendto)=(\"|\')(.+?)\\2/i", $m_option, $buf, PREG_SET_ORDER);
-                    if ($buf && count($buf) == 2) {
-                        $key_value = ($buf[0][1] == 'value') ? $buf[0][3] : $buf[1][3];
-                        $this->dynamic_send_to[$key_value] = ($buf[0][1] == 'value') ? $buf[1][3] : $buf[0][3];
-                    }
+
+            if (!$m_options[0]) {
+                return true;
+            }
+
+            foreach ($m_options[0] as $m_option) {
+                preg_match_all(
+                    "/(value|sendto)=([\"'])(.+?)\\2/i"
+                    , $m_option
+                    , $buf
+                    , PREG_SET_ORDER
+                );
+                if ($buf && count($buf) != 2) {
+                    continue;
+                }
+                if ($buf[0][1] === 'value') {
+                    $this->dynamic_send_to[$buf[0][3]] = $buf[1][3];
+                } else {
+                    $this->dynamic_send_to[$buf[1][3]] = $buf[0][3];
                 }
             }
         }
+
         return true;
     }
 
+    private function _get_input_type($v) {
+        // 項目タイプを取得
+        if ($v[1] === 'input') {
+            preg_match("/type=([\"'])(.+?)\\1/", $v[0], $t_match);
+            return $t_match[2];
+        }
+
+        return $v[1];
+    }
     /**
-    * 指定したIDのフォームタグ内のみ抽出
-    * 
-    * @access private
-    * @param string $html 対象のHTML文書
-    * @param string $id   抽出対象のフォームID
-    * @return mixed 抽出されたHTML文書（失敗の場合は FALSE）
-    */
+     * 指定したIDのフォームタグ内のみ抽出
+     *
+     * @access private
+     * @param string $html 対象のHTML文書
+     * @param string $id   抽出対象のフォームID
+     * @return mixed 抽出されたHTML文書（失敗の場合は FALSE）
+     */
     private function extractForm($html, $id = '') {
         if (preg_match("@<form.+?>([\S\s]+)</form>@m", $html, $match_form)) {
-            $ret = $match_form[1];
-        } else {
-            $this->setError('&lt;form&gt;タグが見つかりません');
-            $ret = false;
+            return $match_form[1];
         }
-        return $ret;
+
+        $this->setError('&lt;form&gt;タグが見つかりません');
+        return false;
     }
 
     /**
-    * 入力値をセッションに待避
-    * 
-    * @access public
-    * @param  void
-    * @return void
-    */
+     * 入力値をセッションに待避
+     *
+     * @access public
+     * @param  void
+     * @return void
+     */
     public function storeDataInSession() {
         $_SESSION['_cffm_recently_send'] = array();
         foreach ($this->form as $k => $v) {
-            if ($k != '_mode' && $k != '_cffm_token') {
-                $_SESSION['_cffm_recently_send'][$k] = $v;
+            if ($k === '_mode' || $k === '_cffm_token') {
+                continue;
             }
+            $_SESSION['_cffm_recently_send'][$k] = $v;
         }
         return;
     }
 
     /**
-    * エラーメッセージを設定
-    *
-    * @access private
-    * @param  string $mes メッセージ
-    * @return void
-    */
+     * エラーメッセージを設定
+     *
+     * @access private
+     * @param  string $mes メッセージ
+     * @return void
+     */
     private function setError($mes) {
         $this->error_message = $mes;
-        return;
     }
 
     /**
-    * エラーメッセージを取得
-    *
-    * @access public
-    * @param  void
-    * @return string 取得したメッセージ
-    */
+     * エラーメッセージを取得
+     *
+     * @access public
+     * @param  void
+     * @return string 取得したメッセージ
+     */
     public function getError() {
         return $this->convertText($this->error_message);
     }
 
     /**
-    * 検証エラーを設定
-    *
-    * @access private
-    * @param  string $field   エラーのあるフィールド名
-    * @param  string $label  エラーのある項目名
-    * @param  string $message 割り当てるメッセージ
-    * @return void
-    */
+     * 検証エラーを設定
+     *
+     * @access private
+     * @param  string $field   エラーのあるフィールド名
+     * @param  string $label  エラーのある項目名
+     * @param  string $message 割り当てるメッセージ
+     * @return bool
+     */
     private function setFormError($field, $label, $message) {
         $this->formError[$field][] = array('label' => $label, 'text' => $message);
         return true;
     }
 
     /**
-    * 検証エラーを取得
-    *
-    * @access public
-    * @return array 取得したメッセージ（プレースホルダ用に整形。個別用の error.field_name と 一括用の errors の両方が返される）
-    */
+     * 検証エラーを取得
+     *
+     * @access public
+     * @return array 取得したメッセージ（プレースホルダ用に整形。個別用の error.field_name と 一括用の errors の両方が返される）
+     */
     public function getFormError() {
         if (count($this->formError) < 1) {
             return array();
@@ -1213,7 +1362,11 @@ class Class_cfFormMailer {
         $ret = array();
         foreach ($this->formError as $field => $val) {
             foreach ($val as $mes) {
-                $label = $mes['label'] ? $this->convertText($mes['label']) : $field;
+                if ($mes['label']) {
+                    $label = $this->convertText($mes['label']);
+                } else {
+                    $label = $field;
+                }
                 $ret['error.' . $field][] = $this->convertText($mes['text']);
                 $ret['errors'][] = '[' . $label . '] ' . $this->convertText($mes['text']);
             }
@@ -1222,209 +1375,315 @@ class Class_cfFormMailer {
     }
 
     /**
-    * エラー制御
-    *
-    * @access public
-    * @param  string  $mes   エラーメッセージ
-    * @param  boolean $ifDie TRUE の場合、プロセス終了
-    * @return void
-    */
+     * エラー制御
+     *
+     * @access public
+     * @param  string  $mes   エラーメッセージ
+     * @param  boolean $ifDie TRUE の場合、プロセス終了
+     * @return string
+     */
     public function raiseError($mes, $ifDie = false) {
-        return sprintf('<p style="color:#cc0000;background:#fff;font-weight:bold;">SYSTEM ERROR::%s</p>', $mes);
+        return sprintf(
+            '<p style="color:#cc0000;background:#fff;font-weight:bold;">SYSTEM ERROR::%s</p>'
+            , $mes
+        );
     }
 
     /**
-    * バージョン番号を取得
-    * 
-    * @return string バージョン番号
-    */
+     * バージョン番号を取得
+     *
+     * @return string バージョン番号
+     */
     public function getVersion() {
         return $this->version;
     }
 
     /**
-    * 自動返信先メールアドレスを取得
-    *
-    * @return string メールアドレス
-    */
+     * 自動返信先メールアドレスを取得
+     *
+     * @return string メールアドレス
+     */
     private function getAutoReplyAddress() {
-        if (!AUTO_REPLY) return '';
+        if (!$this->cfg['auto_reply']) return '';
         $reply_to = '';
-        $tmp = explode('+', REPLY_TO);
+        $tmp = explode('+', $this->cfg['reply_to']);
         foreach ($tmp as $t) {
             $t = trim($t);
-            $reply_to .= ($t == '@') ? '@' : $this->form[$t];
+            if ($t === '@') {
+                $reply_to .= '@';
+            } else {
+                $reply_to .= $this->form[$t];
+            }
         }
         return $reply_to;
     }
 
     /**
-    * メールアドレス妥当性チェック
-    *
-    * @access private
-    * @param string $addr チェックするメールアドレス
-    * @return boolean 結果
-    */
+     * メールアドレス妥当性チェック
+     *
+     * @access private
+     * @param string $addr チェックするメールアドレス
+     * @return boolean 結果
+     */
     private function _isValidEmail($addr) {
-        return preg_match("/^(?:[a-z0-9+_-]+?\.)*?[a-z0-9_+-]+?@(?:[a-z0-9_-]+?\.)*?[a-z0-9_-]+?\.[a-z0-9]{2,5}$/i", $addr);
+        return preg_match(
+            "/^(?:[a-z0-9+_-]+?\.)*?[a-z0-9_+-]+?@(?:[a-z0-9_-]+?\.)*?[a-z0-9_-]+?\.[a-z0-9]{2,5}$/i"
+            , $addr
+        );
     }
 
     /**
-    * ファイルのMIMEタイプを取得
-    * class.upload.php 使用推奨
-    *
-    * @param string  $filename MIMEタイプを調べるファイル
-    * @param string  $field  アップロードされたフィールド名
-    * @return string MIMEタイプ。失敗の場合は false 
-    */
+     * ファイルのMIMEタイプを取得
+     * class.upload.php 使用推奨
+     *
+     * @param string  $filename MIMEタイプを調べるファイル
+     * @param string  $field  アップロードされたフィールド名
+     * @return string MIMEタイプ。失敗の場合は false
+     */
     private function _getMimeType($filename, $field = '') {
-        $mime = false;
         if (class_exists('upload')) {
             // class.upload.php使用
             $up = new upload($filename);
             if ($up->uploaded) {
-                $mime = $up->file_src_mime;
+                return $up->file_src_mime;
             }
-        } else {
-            // class.upload.php未使用。image以外の結果はあまり信用できない
-            $size = @getimagesize($filename);
-            if ($size === false) {
-                if (isset($_FILES[$field]['type']) && $_FILES[$field]['type']) {
-                    $mime = $_FILES[$field]['type'];
-                }
-            } else {
-                $mime = $size['mime'];
-            }
+            return false;
         }
-        return $mime;
+
+        // class.upload.php未使用。image以外の結果はあまり信用できない
+        $size = @getimagesize($filename);
+        if ($size === false) {
+            if (isset($_FILES[$field]['type']) && $_FILES[$field]['type']) {
+                return $_FILES[$field]['type'];
+            }
+            return false;
+        }
+
+        return $size['mime'];
     }
 
     /**
-    * MIMEタイプからファイルの識別子を取得
-    *
-    * @param string  MIMEタイプ
-    * @return  string  タイプ
-    */
+     * MIMEタイプからファイルの識別子を取得
+     *
+     * @param string  MIMEタイプ
+     * @return  string  タイプ
+     */
     private function _getType($mime) {
         $mime_list = array(
-            'image/gif'   => 'gif',
-            'image/jpeg'  => 'jpg',
-            'image/pjpeg' => 'jpg',
-            'image/png'   => 'png',
-            'application/pdf' => 'pdf',
-            'text/plain'  => 'txt',
-            'text/html'   => 'html',
-            'application/msword'  => 'word'
+            'image/gif'          => 'gif',
+            'image/jpeg'         => 'jpg',
+            'image/pjpeg'        => 'jpg',
+            'image/png'          => 'png',
+            'application/pdf'    => 'pdf',
+            'text/plain'         => 'txt',
+            'text/html'          => 'html',
+            'application/msword' => 'word'
         );
-        return (isset($mime_list[$mime])) ? $mime_list[$mime] : '';
+
+        if (isset($mime_list[$mime])) {
+            return $mime_list[$mime];
+        }
+
+        return '';
     }
 
     /**
-    * 環境設定の読み込み
-    * 
-    * @param string $config_name 環境設定チャンク名 
-    * @return mixed true || エラーメッセージ
-    */
+     * 環境設定の読み込み
+     *
+     * @param string $config_name 環境設定チャンク名
+     * @return mixed true || エラーメッセージ
+     */
     public function parseConfig($config_name) {
         $conf = $this->loadTemplate($config_name);
-        if (!$conf) return '環境設定チャンクの読み込みに失敗しました!';
+        if (!$conf) {
+            return '環境設定の読み込みに失敗しました。';
+        }
+
+        $cfg = array();
+
+        if (isset(evo()->event->params['language'])) {
+            $lang = evo()->event->params['language'];
+        } else {
+            $lang = strtolower(evo()->config['manager_language']);
+        }
+
+        if(strpos($lang,'euc-jp')!==false) {
+            $cfg['charset'] = 'euc-jp';
+        } else {
+            $cfg['charset'] = 'utf-8';
+        }
+
+        $this->cfg = $cfg;
+
+        if(!defined('CHARSET')) {
+            define('CHARSET', $this->cfg['charset']);
+        }
 
         $conf = $this->adaptEncoding($conf);
-        $conf = strtr($conf, array("\r\n" => "\n", "\r" => "\n"));
+
         $conf_arr = explode("\n", $conf);
+
         foreach ($conf_arr as $line) {
 
-            if (strpos($line, '#') === 0)             continue;
-            if (!preg_match('/[a-zA-Z0-9=]/', $line)) continue;
+            if (strpos($line, '#') === 0 || !preg_match('/[a-zA-Z0-9=]/', $line)) {
+                continue;
+            }
 
             list($key, $val) = explode('=', $line, 2);
 
             $key = trim($key);
-            if(!$key) continue;
+            if(!$key) {
+                continue;
+            }
             $cfg[$key] = trim($val);
         }
 
-        // 必須項目チェック
-        $err = array();
-        if (!$cfg['tmpl_input']) $err[] = '`入力画面テンプレート`を指定してください';
-        if (!$cfg['tmpl_conf'])  $err[] = '`確認画面テンプレート`を指定してください';
-        if (!$cfg['tmpl_comp'] && !$cfg['complete_redirect'])
-        $err[] = '`完了画面テンプレート`または`送信後遷移する完了画面リソースID`を指定してください';
-
-        if (!$cfg['tmpl_mail_admin']) $err[] = '`管理者宛メールテンプレート`を指定してください';
-        if ($cfg['auto_reply'] && !$cfg['tmpl_mail_reply']) $err[] = '`自動返信メールテンプレート`を指定してください';
-
-        if ($err) {
-            return join('<br />', $this->convertText($err));
-        }
-
-        // 値の指定が無い場合はデフォルト値を設定
-        if (!$cfg['admin_mail'])     $cfg['admin_mail']     = $this->modx->config['emailsender'];
-        if (!$cfg['auto_reply'])     $cfg['auto_reply']     = 0;
-        if (!$cfg['reply_to'])       $cfg['reply_to']       = 'email';
-        if (!$cfg['reply_fromname']) $cfg['reply_fromname'] = $this->modx->config['site_name'];
-
-        if (!$cfg['vericode'])       $cfg['vericode']     = 0;
-        if (!$cfg['admin_ishtml'])   $cfg['admin_ishtml'] = 0;
-        if (!$cfg['reply_ishtml'])   $cfg['reply_ishtml'] = 0;
-        if (!$cfg['allow_html'])     $cfg['allow_html']   = 0;
-
-        // 定数として設定
-        foreach ($cfg as $key => $value) {
-            define(strtoupper($key), $value);
-        }
         $this->cfg = $cfg;
-        return true;
+
+        if ($this->getErrors()) {
+            $this->setSystemError(
+                join(
+                    '<br />'
+                    , $this->convertText($this->getErrors())
+                )
+            );
+            return false;
+        }
+
+        $this->setDefaultConfig();
+
+        return $this->cfg;
     }
 
-    /**
-    * 送信内容をDBに保存
-    * 動作にはcfFormDBモジュールが必要
-    * 
-    * @access public
-    */
-    public function storeDB() {
-        if (!defined('USE_STORE_DB') || !USE_STORE_DB) {
+    public function getConfig($key, $default=null) {
+        if(!isset($this->cfg[$key])) {
+            return $default;
+        }
+        return $this->cfg[$key];
+    }
+
+    private function getErrors() {
+        static $errors = null;
+
+        if($errors!==null) {
+            return $errors;
+        }
+
+        // 必須項目チェック
+        $errors = array();
+        if (!$this->getConfig('tmpl_input')) {
+            $errors[] = '`入力画面テンプレート`を指定してください';
+        }
+        if (!$this->getConfig('tmpl_conf')) {
+            $errors[] = '`確認画面テンプレート`を指定してください';
+        }
+        if (!$this->getConfig('tmpl_comp') && !$this->getConfig('complete_redirect')) {
+            $errors[] = '`完了画面テンプレート`または`送信後遷移する完了画面リソースID`を指定してください';
+        }
+
+        if (!$this->getConfig('tmpl_mail_admin')) {
+            $errors[] = '`管理者宛メールテンプレート`を指定してください';
+        }
+        if ($this->getConfig('auto_reply') && !$this->getConfig('tmpl_mail_reply')) {
+            $errors[] = '`自動返信メールテンプレート`を指定してください';
+        }
+
+        return $errors;
+    }
+
+    private function setDefaultConfig() {
+        // 値の指定が無い場合はデフォルト値を設定
+        if (!$this->getConfig('admin_mail')) {
+            $this->cfg['admin_mail'] = evo()->config['emailsender'];
+        }
+        if (!$this->getConfig('auto_reply')) {
+            $this->cfg['auto_reply'] = 0;
+        }
+        if (!$this->getConfig('reply_to')) {
+            $this->cfg['reply_to'] = 'email';
+        }
+        if (!$this->getConfig('reply_fromname')) {
+            $this->cfg['reply_fromname'] = evo()->config['site_name'];
+        }
+
+        if (!$this->getConfig('vericode')) {
+            $this->cfg['vericode'] = 0;
+        }
+        if (!$this->getConfig('admin_ishtml')) {
+            $this->cfg['admin_ishtml'] = 0;
+        }
+        if (!$this->getConfig('reply_ishtml')) {
+            $this->cfg['reply_ishtml'] = 0;
+        }
+        if (!$this->getConfig('allow_html')) {
+            $this->cfg['allow_html'] = 0;
+        }
+    }
+
+    private function setSystemError($error_string) {
+        $this->sysError = $error_string;
+    }
+
+    public function hasSystemError() {
+        if($this->sysError) {
             return true;
         }
 
-        if (!$this->ifTableExists()) return true;
+        return false;
+    }
 
-        $sql = 'INSERT INTO ' . $this->modx->getFullTableName('cfformdb') . '(created) VALUES(NOW())';
-        $this->modx->db->query($sql);
-        $newID = $this->modx->db->getInsertId();
+    public function getSystemError() {
+        return $this->sysError;
+    }
+
+    /**
+     * 送信内容をDBに保存
+     * 動作にはcfFormDBモジュールが必要
+     *
+     * @access public
+     */
+    public function storeDB() {
+        if (!$this->cfg['use_store_db']) {
+            return;
+        }
+
+        if (!$this->ifTableExists()) {
+            return;
+        }
+
+        $sql = 'INSERT INTO ' . evo()->getFullTableName('cfformdb') . '(created) VALUES(NOW())';
+        db()->query($sql);
+        $newID = db()->getInsertId();
         $rank = 0;
         foreach ($this->form as $key => $val) {
-            if ($key == 'veri') {
+            if ($key === 'veri') {
                 continue;
             }
             if (is_array($val)) {
                 $val = join(',', $val);
             }
             $sql = sprintf("INSERT INTO %s(postid,field,value,rank) VALUES(%d, '%s', '%s', %d)",
-                $this->modx->getFullTableName('cfformdb_detail'),
+                evo()->getFullTableName('cfformdb_detail'),
                 $newID,
-                $this->modx->db->escape($key),
-                $this->modx->db->escape($val),
+                db()->escape($key),
+                db()->escape($val),
                 $rank
             );
-            $this->modx->db->query($sql);
+            db()->query($sql);
             $rank++;
         }
     }
 
     /**
-    * テーブルの存在確認
-    * @access private
-    */
+     * テーブルの存在確認
+     * @access private
+     */
     private function ifTableExists() {
-        $sql = 'SHOW TABLES FROM ' . $this->modx->db->config['dbase'] . " LIKE '%cfformdb%'";
-        if ($rs = $this->modx->db->query($sql)) {
-            if ($this->modx->db->getRecordCount($rs) == 2) {
-                return true;
-            }
-        }
-        return false;
+        $sql = sprintf(
+            "SHOW TABLES FROM %s LIKE '%%cfformdb%%'"
+            , db()->config['dbase']
+        );
+        return db()->getRecordCount(db()->query($sql)) == 2;
     }
 
     /* ------------------------------------------------------------------ */
@@ -1432,45 +1691,74 @@ class Class_cfFormMailer {
     /* ------------------------------------------------------------------ */
 
     /**
-    * num : 数値？
-    */
+     * num : 数値？
+     */
     private function _def_num($value, $param, $field) {
         // 強制的に半角に変換します。
-        $this->form[$field] = mb_convert_kana($this->form[$field], 'n', CHARSET);
-        return (is_numeric($this->form[$field])) ? true : '半角数字で入力してください';
+        $this->form[$field] = mb_convert_kana(
+            $this->form[$field]
+            , 'n'
+            , $this->cfg['charset']
+        );
+
+        if (is_numeric($this->form[$field])) {
+            return true;
+        }
+
+        return '半角数字で入力してください';
     }
 
     /**
-    * email : 正しいメールアドレス形式か？
-    */
+     * email : 正しいメールアドレス形式か？
+     */
     private function _def_email($value, $param, $field) {
         // 強制的に半角に変換します。
-        $this->form[$field] = mb_convert_kana($this->form[$field], 'a', CHARSET);
-        return $this->_isValidEmail($this->form[$field]) ? true : 'メールアドレスの形式が正しくありません';
+        $this->form[$field] = mb_convert_kana(
+            $this->form[$field]
+            , 'a'
+            , $this->cfg['charset']
+        );
+
+        if ($this->_isValidEmail($this->form[$field])) {
+            return true;
+        }
+
+        return 'メールアドレスの形式が正しくありません';
     }
 
     /**
-    * len(min, max) : 文字数チェック
-    */
+     * len(min, max) : 文字数チェック
+     */
     private function _def_len($value, $param, $field) {
 
-        if (!preg_match("/([0-9]+)?(\-)?([0-9]+)?/", $param, $match)) return true;
+        if (!preg_match("/([0-9]+)?(-)?([0-9]+)?/", $param, $match)) {
+            return true;
+        }
 
         if ($match[1] && empty($match[2]) && empty($match[3])) {
-            if (mb_strlen($value) != $match[1]) return "{$match[1]}文字で入力してください";
+            if (mb_strlen($value) != $match[1]) {
+                return $match[1] . '文字で入力してください';
+            }
             return true;
         }
+
         if (!$match[1] && $match[2] && $match[3]) {
-            if (mb_strlen($value) > $match[3]) return "{$match[3]}文字以内で入力してください";
+            if (mb_strlen($value) > $match[3]) {
+                return $match[3] . '文字以内で入力してください';
+            }
             return true;
         }
+
         if ($match[1] && $match[2] && !$match[3]) {
-            if (mb_strlen($value) < $match[1]) return "{$match[1]}文字以上で入力してください";
+            if (mb_strlen($value) < $match[1]) {
+                return $match[1] . '文字以上で入力してください';
+            }
             return true;
         }
+
         if ($match[1] && $match[2] && $match[3]) {
             if (mb_strlen($value) < $match[1] || mb_strlen($value) > $match[3]) {
-                return "{$match[1]}～{$match[3]}文字で入力してください";
+                return sprintf('%s～%s文字で入力してください', $match[1], $match[3]);
             }
             return true;
         }
@@ -1478,87 +1766,123 @@ class Class_cfFormMailer {
     }
 
     /**
-    * vericode : CAPTCHA による認証チェック
-    *   Added in v0.0.5
-    */
+     * vericode : CAPTCHA による認証チェック
+     *   Added in v0.0.5
+     */
     private function _def_vericode($value, $param, $field) {
-        if (!VERICODE) return true;
+        if (!$this->cfg['vericode']) {
+            return true;
+        }
         if ($_SESSION['veriword'] == $value) {
             return true;
-        } else {
-            $this->form[$field] = '';
-            return '入力値が正しくありません';
         }
+
+        $this->form[$field] = '';
+        return '入力値が正しくありません';
     }
 
     /**
-    * range(min, max) : 値範囲チェック
-    *   Added in v0.0.5
-    */
+     * range(min, max) : 値範囲チェック
+     *   Added in v0.0.5
+     */
     private function _def_range($value, $param, $field) {
-        $err = 0;
-        if (preg_match("/([0-9-]+)?(~)?([0-9-]+)?/", $param, $match)) {
-            if ($match[1] && !$match[2] && !$match[3]) {
-                if ($match[1] < $value) $err = 1;
-            } elseif (!$match[1] && $match[2] && $match[3]) {
-                if ($match[3] < $value) $err = 1;
-            } elseif ($match[1] && $match[2] && !$match[3]) {
-                if ($value < $match[1]) $err = 1;
-            } elseif ($match[1] && $match[2] && $match[3]) {
-                if ($match[3] < $value || $value < $match[1]) $err = 1;
-            }
-            if ($err) return '入力値が範囲外です';
+
+        if (!preg_match('/([0-9-]+)?(~)?([0-9-]+)?/', $param, $match)) {
+            return true;
         }
+
+        if ($match[1] && !$match[2] && !$match[3]) {
+            if ($match[1] < $value) {
+                return '入力値が範囲外です';
+            }
+
+            return true;
+        }
+
+        if (!$match[1] && $match[2] && $match[3]) {
+            if ($match[3] < $value) {
+                return '入力値が範囲外です';
+            }
+            return true;
+        }
+
+        if (isset($match[1], $match[2])) {
+            if ($value < $match[1]) {
+                return '入力値が範囲外です';
+            }
+
+            if ($match[3] < $value) {
+                return '入力値が範囲外です';
+            }
+            return true;
+        }
+
         return true;
     }
 
     /**
-    * sameas(field) : 同一確認
-    *   Added in v0.0.6
-    */
+     * sameas(field) : 同一確認
+     *   Added in v0.0.6
+     */
     private function _def_sameas($value, $param, $field) {
         if ($value == $this->form[$param]) {
             return true;
-        } else {
-            unset($this->form[$field]);
-            return sprintf('&laquo; %s &raquo; と一致しません', $this->adaptEncoding($this->parsedForm[$param]['label']));
         }
+
+        unset($this->form[$field]);
+        return sprintf('&laquo; %s &raquo; と一致しません', $this->adaptEncoding($this->parsedForm[$param]['label']));
     }
 
     /**
-    * tel : 電話番号？
-    *   Added in v0.0.7
-    */
+     * tel : 電話番号？
+     *   Added in v0.0.7
+     */
     private function _def_tel($value, $param, $field) {
         // 強制的に半角に変換します。
-        $this->form[$field] = mb_convert_kana($this->form[$field], 'a', CHARSET);
-        $checkLen = (substr($this->form[$field],0,1)=='0') ? 10 : 5;
+        $this->form[$field] = mb_convert_kana($this->form[$field], 'a', $this->cfg['charset']);
+        $this->form[$field] = preg_replace('@([0-9])ー@u', '$1-', $this->form[$field]);
+        if ((strpos($this->form[$field], '0') === 0)) {
+            $checkLen = 10;
+        } else {
+            $checkLen = 5;
+        }
         $checkStr = preg_replace('/[^0-9]/','',$this->form[$field]);
-        return (preg_match("/[^0-9\-+]/", $checkStr) || strlen($checkStr) < $checkLen) ? '半角数字とハイフンで正しく入力してください' : true;
+        if (!preg_match('/[0-9]{4}$/', $this->form[$field])) {
+            return '正しい電話番号を入力してください。';
+        }
+
+        if ((preg_match("/[^0-9\-+]/", $checkStr) || strlen($checkStr) < $checkLen)) {
+            return '半角数字とハイフンで正しく入力してください';
+        }
+
+        return true;
     }
 
     /**
-    * tel : 郵便番号
-    *   Added in v1.3.x
-    */
+     * tel : 郵便番号
+     *   Added in v1.3.x
+     */
     private function _def_zip($value, $param, $field) {
         // 強制的に半角に変換します。
-        $this->form[$field] = mb_convert_kana($this->form[$field], 'as', CHARSET);
+        $this->form[$field] = mb_convert_kana($this->form[$field], 'as', $this->cfg['charset']);
         $this->form[$field] = preg_replace('/[^0-9]/','',$this->form[$field]);
         $str = $this->form[$field];
 
-        if(strlen($str) !== 7) return '半角数字とハイフンで正しく入力してください';
+        if(strlen($str) !== 7) {
+            return '半角数字とハイフンで正しく入力してください';
+        }
+
         $this->form[$field] = substr($str,0,3) . '-' . substr($str,-4);
 
         return true;
     }
 
     /**
-    * allowtype(type) : アップロードを許可するファイル形式
-    *   Added in v1.0
-    */
+     * allowtype(type) : アップロードを許可するファイル形式
+     *   Added in v1.0
+     */
     private function _def_allowtype($value, $param, $field) {
-        $flag = true;
+
         if (!isset($_FILES[$field]['tmp_name']) || empty($_FILES[$field]['tmp_name']) || !is_uploaded_file($_FILES[$field]['tmp_name'])) {
             return true;
         }
@@ -1566,99 +1890,195 @@ class Class_cfFormMailer {
         if (!count($allow_list)) {
             return true;
         }
-        if (($mime = $this->_getMimeType($_FILES[$field]['tmp_name'], $field)) === false) {
-            $flag = false;
-        } else {
-            $type = $this->_getType($mime);
-            if (!$type || !in_array($type, $allow_list)) {
-                $flag = false;
-            }
+
+        $mime = $this->_getMimeType($_FILES[$field]['tmp_name'], $field);
+        if ($mime === false) {
+            return '許可されたファイル形式ではありません';
         }
-        return $flag ? true : '許可されたファイル形式ではありません';
+
+        $type = $this->_getType($mime);
+        if (!$type || !in_array($type, $allow_list, true)) {
+            return '許可されたファイル形式ではありません';
+        }
+
+        return true;
     }
 
+    private function array_get($array, $key, $default=null) {
+        if (!isset($array[$key])) {
+            return $default;
+        }
+        return $array[$key];
+    }
     /**
-    * allowsize(size) : アップロードを許可する最大ファイルサイズ
-    *   Added in v1.0
-    */
+     * allowsize(size) : アップロードを許可する最大ファイルサイズ
+     *   Added in v1.0
+     */
     private function _def_allowsize($value, $param, $field) {
         if (!isset($_FILES[$field]['tmp_name']) || empty($_FILES[$field]['tmp_name']) || !is_uploaded_file($_FILES[$field]['tmp_name'])) {
             return true;
         }
+
         if (!$param || !is_numeric($param)) {
             return false;
         }
+
         $size = @stat($_FILES[$field]['tmp_name']);
         if ($size === false) {
             return 'ファイルのアップロードに失敗しました';
-        } else {
-            return ($size['size'] <= $param * 1024) ? true : $param . 'キロバイト以内のファイルを指定してください';
         }
+
+        if (($size['size'] <= $param * 1024)) {
+            return true;
+        }
+
+        return $param . 'キロバイト以内のファイルを指定してください';
     }
 
     /**
-    * convert(param)：半角英数字に変換
-    *   See: http://jp2.php.net/manual/ja/function.mb-convert-kana.php
-    *   Added in v1.2
-    */
-    private function _def_convert($value, $param, $field) {
+     * convert(param)：半角英数字に変換
+     *   See: http://jp2.php.net/manual/ja/function.mb-convert-kana.php
+     *   Added in v1.2
+     * @param $value
+     * @param string $param
+     * @param $field
+     * @return bool
+     */
+    private function _def_convert($value, $param = 'K', $field) {
         if (!$param) {
             $param = 'K';
         }
-        $this->form[$field] = mb_convert_kana($this->form[$field], $param, CHARSET);
+        $this->form[$field] = mb_convert_kana(
+            $this->form[$field]
+            , $param
+            , $this->cfg['charset']
+        );
         return true;  // 常にtrueを返す
     }
 
     /**
-    * url(string)：URL値検証
-    *   Added in v1.2
-    */
+     * zenhan：半角英数字記号に変換
+     *   See: http://jp2.php.net/manual/ja/function.mb-convert-kana.php
+     *   Added in v1.2
+     * @param $value
+     * @param string $param
+     * @param $field
+     * @return bool
+     */
+    private function _def_zenhan($value, $param='VKas', $field) {
+        $this->form[$field] = mb_convert_kana(
+            $this->form[$field]
+            , $param
+            , $this->cfg['charset']
+        );
+        $this->form[$field] = preg_replace('@([0-9])ー@u', '$1-', $this->form[$field]);
+        return true;  // 常にtrueを返す
+    }
+
+    /**
+     * hanzen：全角英数字記号に変換
+     *   See: http://jp2.php.net/manual/ja/function.mb-convert-kana.php
+     *   Added in v1.2
+     * @param $value
+     * @param string $param
+     * @param $field
+     * @return bool
+     */
+    private function _def_hanzen($value, $param='VKAS', $field) {
+        $this->form[$field] = mb_convert_kana(
+            $this->form[$field]
+            , $param
+            , $this->cfg['charset']
+        );
+        return true;  // 常にtrueを返す
+    }
+
+    /**
+     * url(string)：URL値検証
+     *   Added in v1.2
+     */
     private function _def_url($value, $param, $field) {
         return preg_match("@^https?://.+\..+@", $value);
     }
-
 
     /* ------------------------------------------------------------------ */
     /* 標準装備のフィルターメソッド
     /* ------------------------------------------------------------------ */
 
     /**
-    * implode : 文字列結合
-    */
+     * implode : 文字列結合
+     */
     private function _f_implode($text, $param) {
-        return (is_array($text)) ? implode(str_replace("\\n", "\n", $param), $text) : $text;
+        if (is_array($text)) {
+            return implode(str_replace("\\n", "\n", $param), $text);
+        }
+
+        return $text;
     }
 
     /**
-    * implodetag(tag) : HTMLタグで文字列結合
-    */
+     * implodetag(tag) : HTMLタグで文字列結合
+     */
     private function _f_implodetag($text, $param) {
-        if (!is_array($text)) $text = array($text);
+
+        if (!is_array($text)) {
+            $text = array($text);
+        }
+
         $ret = '';
         foreach ($text as $v) {
-            $ret .= "<{$param}>{$v}</{$param}>";
+            $ret .= sprintf('<%s>%s</%s>', $param, $v, $param);
         }
         return $ret;
     }
 
     /**
-    * num : 数値のフォーマット （※PHP関数 number_format() と同様）
-    */
+     * num : 数値のフォーマット （※PHP関数 number_format() と同様）
+     */
     private function _f_num($text, $param) {
-        return (is_array($text)) ? array_map($this->_f_num, $text, $param) : number_format($text);
+
+        if (is_array($text)) {
+            return array_map($this->_f_num, $text, $param);
+        }
+
+        return number_format($text);
     }
 
     /**
-    * dateformat(format) : 日付のフォーマット （※PHP関数 strftime() と同様）
-    */
+     * dateformat(format) : 日付のフォーマット （※PHP関数 strftime() と同様）
+     */
     private function _f_dateformat($text, $param) {
-        return (is_array($text)) ? array_map($this->_f_dateformat, $text, $param) : strftime($param, strtotime($text));
+
+        if (is_array($text)) {
+            return array_map($this->_f_dateformat, $text, $param);
+        }
+
+        return strftime($param, strtotime($text));
     }
 
     /**
-    * sprintf(format) : テキストのフォーマット （※PHP関数 sprintf() と同様）
-    */
+     * sprintf(format) : テキストのフォーマット （※PHP関数 sprintf() と同様）
+     */
     private function _f_sprintf($text, $param) {
-        return (is_array($text)) ? array_map($this->_f_sprintf, $text, $param) : sprintf($param, $text);
+
+        if (is_array($text)) {
+            return array_map($this->_f_sprintf, $text, $param);
+        }
+
+        return sprintf($param, $text);
+    }
+}
+
+if (!function_exists('evo')) {
+    function evo() {
+        global $modx;
+        return $modx;
+    }
+}
+
+if (!function_exists('db')) {
+    function db() {
+        global $modx;
+        return $modx->db;
     }
 }

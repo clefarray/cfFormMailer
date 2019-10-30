@@ -1,7 +1,7 @@
-<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<!DOCTYPE html>
 <html>
 <head>
-<style type="text/css">
+<style>
 th { vertical-align: top; text-align: left; color: #1E6C8A; padding-right: 1em;}
 fieldset { margin-bottom: 20px;}
 legend { color: #1E6C8A;}
@@ -16,8 +16,6 @@ legend { color: #1E6C8A;}
 <p>お問い合わせありがとうございました。<br />
 以下の内容で受け付けましたのでご確認ください。</p>
 <p>送信日時： [+senddate|dateformat(%Y年%m月%d日 %H時%M分)+]</p>
-
-
   <fieldset><legend>個人情報</legend>
   <table>
     <tbody>
