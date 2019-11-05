@@ -113,7 +113,9 @@ class Class_cfFormMailer {
 
         // ポストされた内容を一時的に退避（事故対策）
         if ($mode === 'error' || $mode === 'conf') {
-            $_SESSION['_cf_autosave'] = $this->form;
+            if($this->config('autosave')) {
+                $_SESSION['_cf_autosave'] = $this->form;
+            }
         }
 
         // アクションごとの処理
@@ -1605,7 +1607,8 @@ class Class_cfFormMailer {
             'vericode'       => 0,
             'admin_ishtml'   => 0,
             'reply_ishtml'   => 0,
-            'allow_html'     => 0
+            'allow_html'     => 0,
+            'autosave'       => 0,
         );
     }
 
