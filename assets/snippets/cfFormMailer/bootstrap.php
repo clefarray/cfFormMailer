@@ -46,13 +46,12 @@ if (is_file(CFM_PATH . 'additionalMethods.inc.php')) {
 if ($_POST['_mode'] === 'conf') {
     $pageType = ($mf->validate()) ? 'conf' : 'error';
 } elseif ($_POST['_mode'] === 'send') {
-    if ($_POST['return']) {
+    if (isset($_POST['return'])) {
         if (!$mf->validate()) {
             return $mf->raiseError('未知のエラーです');
         }
         $pageType = 'return';
-    }
-    if ($mf->validate()) {
+    }elseif ($mf->validate()) {
         if ($mf->isMultiple())    return $mf->raiseError('すでに送信しています');
         if (!$mf->isValidToken()) return $mf->raiseError('画面遷移が正常に行われませんでした');
         if (!$mf->sendMail())     return $mf->raiseError($mf->getError());
