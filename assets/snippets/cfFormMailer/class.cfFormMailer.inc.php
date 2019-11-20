@@ -1184,6 +1184,7 @@ class Class_cfFormMailer {
             , PREG_SET_ORDER
         );
 
+        $methods = array();
         foreach ($match as $v) {
 
             // 検証メソッドを取得
@@ -1210,7 +1211,6 @@ class Class_cfFormMailer {
                 $label = '';
             }
 
-            $methods = array();
             $fieldName = str_replace('[]', '', $v[3]); // 項目名を取得
             if (!isset($methods[$fieldName])) {
                 $methods[$fieldName] = array(
