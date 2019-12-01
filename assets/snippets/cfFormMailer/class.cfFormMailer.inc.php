@@ -546,7 +546,7 @@ class Class_cfFormMailer {
 
         // 管理者宛送信
         evo()->loadExtension('MODxMailer');
-        $pm = &evo()->mail;
+        $pm = evo()->mail;
         foreach ($admin_addresses as $v) {
             $pm->AddAddress($v);
         }
@@ -604,7 +604,7 @@ class Class_cfFormMailer {
         // 自動返信
         if ($this->config('auto_reply') && $reply_to) {
             evo()->loadExtension('MODxMailer');
-            $pm = &evo()->mail;
+            $pm = evo()->mail;
             $pm->AddAddress($reply_to);
             $subject = $this->config('reply_subject') ?: '自動返信メール';
             $pm->Subject = $subject;
