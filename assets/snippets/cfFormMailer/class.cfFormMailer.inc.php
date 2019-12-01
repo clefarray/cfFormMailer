@@ -253,10 +253,13 @@ class Class_cfFormMailer {
         if (!$tmp_html = $this->loadTemplate($this->config('tmpl_input'))) {
             $this->raiseError($this->convertText('入力画面テンプレートの読み込みに失敗しました'));
         }
-        if ($this->parseForm($tmp_html) === false) {
+        $this->parsedForm = $this->parseForm($tmp_html);
+        if (!$this->parsedForm) {
             $this->raiseError($this->getError());
             return false;
         }
+
+        $_SESSION['dynamic_send_to'] = $this->dynamic_send_to_field($tmp_html);
 
         foreach ($this->parsedForm as $field => $method) {
             // 初期変換
@@ -474,13 +477,14 @@ class Class_cfFormMailer {
         }
 
         // 管理者メールアドレス特定
+        $dynamic_send_to = $_SESSION['dynamic_send_to'];
         $admin_addresses = array();
         if ($this->config('dynamic_send_to_field')
-            && $this->dynamic_send_to
+            && $dynamic_send_to
             && $this->form[$this->config('dynamic_send_to_field')]) {
                 $mails = explode(
                     ','
-                    , $this->dynamic_send_to[$this->form[$this->config('dynamic_send_to_field')]]
+                    , $dynamic_send_to[$this->form[$this->config('dynamic_send_to_field')]]
                 );
         } else {
             $mails = explode(',', $this->config('admin_mail'));
@@ -1222,61 +1226,69 @@ class Class_cfFormMailer {
                 );
             }
         }
-        $this->parsedForm = $methods;
-
+        return $methods;
+    }
+    
+    private function dynamic_send_to_field($html) {
+        $methods = $this->parsedForm;
         // 送信先動的変更のためのデータ取得(from v1.3)
-        if ($this->config('dynamic_send_to_field') && isset($methods[$this->config('dynamic_send_to_field')])) {
-            $m_options = array();
-            if ($methods[$this->config('dynamic_send_to_field')]['type'] === 'select') {
-                preg_match(
-                    sprintf(
-                        "@<select.*?name=(\"|\')%s\\1.*?>(.+?)</select>@ims"
-                        , $this->config('dynamic_send_to_field')
-                    )
-                    , $html
-                    , $matches
-                );
-                if ($matches[2]) {
-                    preg_match_all(
-                        "@<option.+?</option>@ims"
-                        , $matches[2]
-                        , $m_options
-                    );
-                }
-            } elseif ($methods[$this->config('dynamic_send_to_field')]['type'] === 'radio') {
+        if (!$this->config('dynamic_send_to_field')) {
+            return null;
+        }
+        $field_name = $this->config('dynamic_send_to_field');
+        if (!isset($methods[$field_name])) {
+            return null;
+        }
+
+        $m_options = array();
+        if ($methods[$field_name]['type'] === 'select') {
+            preg_match(
+                sprintf(
+                    "@<select.*?name=(\"|\')%s\\1.*?>(.+?)</select>@ims"
+                    , $field_name
+                )
+                , $html
+                , $matches
+            );
+            if ($matches[2]) {
                 preg_match_all(
-                    sprintf(
-                        "/<input.*?name=(\"|\')%s\\1.*?>/im"
-                        , $this->config('dynamic_send_to_field')
-                    )
-                    , $html
+                    "@<option.+?</option>@ims"
+                    , $matches[2]
                     , $m_options
                 );
             }
-
-            if (!$m_options[0]) {
-                return true;
-            }
-
-            foreach ($m_options[0] as $m_option) {
-                preg_match_all(
-                    "/(value|sendto)=([\"'])(.+?)\\2/i"
-                    , $m_option
-                    , $buf
-                    , PREG_SET_ORDER
-                );
-                if ($buf && count($buf) != 2) {
-                    continue;
-                }
-                if ($buf[0][1] === 'value') {
-                    $this->dynamic_send_to[$buf[0][3]] = $buf[1][3];
-                } else {
-                    $this->dynamic_send_to[$buf[1][3]] = $buf[0][3];
-                }
-            }
+        } elseif ($methods[$field_name]['type'] === 'radio') {
+            preg_match_all(
+                sprintf(
+                    "/<input.*?name=(\"|\')%s\\1.*?>/im"
+                    , $field_name
+                )
+                , $html
+                , $m_options
+            );
         }
 
-        return true;
+        if (!$m_options[0]) {
+            return null;
+        }
+
+        foreach ($m_options[0] as $m_option) {
+            preg_match_all(
+                "/(value|sendto)=([\"'])(.+?)\\2/i"
+                , $m_option
+                , $buf
+                , PREG_SET_ORDER
+            );
+            if ($buf && count($buf) != 2) {
+                continue;
+            }
+            if ($buf[0][1] === 'value') {
+                $dynamic_send_to[$buf[0][3]] = $buf[1][3];
+            } else {
+                $dynamic_send_to[$buf[1][3]] = $buf[0][3];
+            }
+        }
+        return $dynamic_send_to;
     }
 
     private function _get_input_type($v) {
