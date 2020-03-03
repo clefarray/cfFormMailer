@@ -84,15 +84,15 @@ class Class_cfFormMailer {
     public function createPageHtml($mode) {
 
         if ($mode === 'comp' && $this->config('complete_redirect')) {
-            if (preg_match('/^[1-9][0-9]*$/', $this->config('complete_redirect'))) {
-                $url = evo()->makeUrl($this->config('complete_redirect'));
-            } else {
-                $url = $this->config('complete_redirect');
-            }
             if(isset($_SESSION['_cf_autosave'])) {
                 unset($_SESSION['_cf_autosave']);
             }
-            evo()->sendRedirect($url);
+            if (preg_match('/^[1-9][0-9]*$/', $this->config('complete_redirect'))) {
+                evo()->sendRedirect(evo()->makeUrl($this->config('complete_redirect')));
+                exit;
+            } else {
+                evo()->sendRedirect($this->config('complete_redirect'));
+            }
             exit;
         }
 
@@ -454,7 +454,7 @@ class Class_cfFormMailer {
 
         // send_mail環境設定が0の場合は送信しない
         if (!$this->config('send_mail')) {
-            return true;
+            return false;
         }
 
         // 改行コードの設定
@@ -471,7 +471,7 @@ class Class_cfFormMailer {
         }
         // 送信メールの文字コード
         if ($this->config('mail_charset')) {
-            $mailCharset = MAIL_CHARSET;
+            $mailCharset = $this->config('mail_charset');
         } else {
             $mailCharset = 'iso-2022-jp';
         }
@@ -566,8 +566,11 @@ class Class_cfFormMailer {
                 }
             }
         }
-        $subject = $this->config('admin_subject') ? $this->config('admin_subject') : 'サイトから送信されたメール';
-        $pm->Subject = $subject;
+        if($this->config('admin_subject')) {
+            $pm->Subject = evo()->parseText($this->config('admin_subject'), $this->form);
+        } else {
+            $pm->Subject = 'サイトから送信されたメール';
+        }
         $pm->setFrom(
             $admin_addresses[0]
             , ($this->config('admin_name')) ? evo()->parseText($this->config('admin_name'),$this->form) : ''
@@ -606,10 +609,13 @@ class Class_cfFormMailer {
             evo()->loadExtension('MODxMailer');
             $pm = evo()->mail;
             $pm->AddAddress($reply_to);
-            $subject = $this->config('reply_subject') ?: '自動返信メール';
-            $pm->Subject = $subject;
+            if($this->config('reply_subject')) {
+                $pm->Subject = evo()->parseText($this->config('reply_subject'),$this->form);
+            } else {
+                $pm->Subject = '自動返信メール';
+            }
             $pm->setFrom(
-                $this->config('reply_from', $admin_addresses[0])
+                $this->config('reply_from') ? $this->config('reply_from') : $admin_addresses[0]
                 , $this->config('reply_fromname')
             );
             $pm->Sender = $pm->From;
@@ -1076,8 +1082,10 @@ class Class_cfFormMailer {
             foreach ($data as $k => $v) {
                 $data[$k] = $this->convertNullToStr($v, $string);
             }
-        } else {
-            $data = (empty($data)) ? $string : $data;
+            return $data;
+        }
+        if(!$data) {
+            return $string;
         }
         return $data;
     }
@@ -1621,6 +1629,7 @@ class Class_cfFormMailer {
             'reply_ishtml'   => 0,
             'allow_html'     => 0,
             'autosave'       => 0,
+            'send_mail'      => 1,
         );
     }
 
