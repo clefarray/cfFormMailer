@@ -266,8 +266,8 @@ class Class_cfFormMailer {
             if ($method['type'] !== 'textarea') {
                 // <textarea>タグ以外は改行を削除
                 if (is_array($this->form[$field])) {
-                    foreach ($this->form[$field] as $k=>&$v) {
-                        $v = strtr($v, array("\r" => '', "\n" => ''));
+                    foreach ($this->form[$field] as $k=>$v) {
+                        $this->form[$field][$k] = strtr($v, array("\r" => '', "\n" => ''));
                     }
                 } else {
                     $this->form[$field] = strtr($this->form[$field], array("\r" => '', "\n" => ''));
