@@ -1923,6 +1923,12 @@ class Class_cfFormMailer {
         }
         return $array[$key];
     }
+    private function isSpam() {
+        if(isset($_SERVER['HTTP_ACCEPT_LANGUAGE'])) {
+            return false;
+        }
+        return true;
+    }
     /**
      * allowsize(size) : アップロードを許可する最大ファイルサイズ
      *   Added in v1.0
