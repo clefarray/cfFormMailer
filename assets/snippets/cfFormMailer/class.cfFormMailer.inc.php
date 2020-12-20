@@ -1164,9 +1164,6 @@ class Class_cfFormMailer {
             if (is_array($v)) {
                 $v = $this->getFormVariables($v);
             } else {
-                if (get_magic_quotes_gpc()) {
-                    $v = stripslashes($v);
-                }
                 $v = str_replace("\0", '', $v);
                 $v = strtr($v, array("\r\n" => "\n", "\r" => "\n"));
                 $v = preg_replace("/\n+$/m", "\n", $v);
