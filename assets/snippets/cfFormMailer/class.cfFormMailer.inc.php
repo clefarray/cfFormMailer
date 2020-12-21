@@ -942,22 +942,24 @@ class Class_cfFormMailer {
     private function loadTemplate($tpl_name) {
         $tpl_name = trim($tpl_name);
         if (preg_match('/^@FILE:.+/', $tpl_name)) {
-            $tpl_path = CFM_PATH . trim(substr($tpl_name, 6));
-            if(is_file($tpl_path)) {
+            $list = array(
+                CFM_PATH . trim(substr($tpl_name, 6)),
+                MODX_BASE_PATH . trim(substr($tpl_name, 6))
+            );
+            foreach ($list as $path) {
+                if(!is_file($path)) {
+                    continue;
+                }
                 return $this->parseDocumentSource(
-                    file_get_contents($tpl_path)
+                    file_get_contents($path)
                 );
-            }
-            $tpl_path = MODX_BASE_PATH . trim(substr($tpl_name, 6));
-            if(is_file($tpl_path)) {
-                return $this->parseDocumentSource(file_get_contents($tpl_path));
             }
         } elseif (preg_match('/^[1-9][0-9]*$/', $tpl_name)) {
             $doc = $this->getDocument($tpl_name);
             if(isset($doc['content']) && $doc['content']) {
                 return $this->parseDocumentSource($doc['content']);
             }
-        } else if($content = evo()->getChunk($tpl_name)) {
+        } elseif($content = evo()->getChunk($tpl_name)) {
             return $this->parseDocumentSource($content);
         }
 
