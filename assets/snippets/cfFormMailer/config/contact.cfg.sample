@@ -1,0 +1,39 @@
+# cfFormMailer for MODX configuration v1.6
+
+# 管理者宛メール設定
+admin_mail = example@example.com
+admin_name =
+admin_subject = 問い合わせフォームからの送信
+admin_ishtml = 0
+admin_mail_cc =
+admin_mail_bcc =
+dynamic_send_to_field =
+
+# 自動返信メール設定
+auto_reply = 1
+reply_to = email
+reply_from = 
+reply_fromname = 
+reply_subject = お問い合わせありがとうございます
+reply_ishtml = 0
+attach_file = 
+attach_file_name =
+
+# テンプレート (チャンク名またはリソースIDで指定）
+tmpl_input = @FILE:tpl/web_form.tpl
+tmpl_conf = @FILE:tpl/web_confirm.tpl
+tmpl_comp = @FILE:tpl/web_thanks.tpl
+tmpl_mail_admin = @FILE:tpl/mail_receive.tpl
+tmpl_mail_reply = @FILE:tpl/mail_autoreply.tpl
+tmpl_mail_reply_mobile =
+complete_redirect =
+
+# その他の設定
+vericode = 0
+invalid_class = invalid
+allow_html = 0
+upload_tmp_path = 0
+lf_style = 0
+use_store_db = 0
+send_mail = 1
+mail_charset = 
