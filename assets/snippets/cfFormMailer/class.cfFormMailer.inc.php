@@ -473,7 +473,7 @@ class Class_cfFormMailer {
         if ($this->config('mail_charset')) {
             $mailCharset = $this->config('mail_charset');
         } else {
-            $mailCharset = 'iso-2022-jp';
+            $mailCharset = 'iso-2022-jp-ms';
         }
 
         // 管理者メールアドレス特定
