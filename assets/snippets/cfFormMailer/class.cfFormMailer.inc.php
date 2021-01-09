@@ -1189,7 +1189,7 @@ class Class_cfFormMailer {
         }
 
         preg_match_all(
-            "/<(input|textarea|select).*?name=([\"'])(.+?)\\2.*?>/i"
+            "/<(input|textarea|select).*?name=([\"'])(.+?)\\2.*?>/is"
             , $html
             , $match
             , PREG_SET_ORDER
