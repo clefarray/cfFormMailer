@@ -186,17 +186,6 @@
             </iferror>
           </td>
         </tr>
-        <tr>
-          <th>
-            <label for="f_fax">FAX番号</label>
-          </th>
-          <td>
-            <input type="text" name="fax" id="f_fax" size="30" valid=":tel" />
-            <iferror.fax>
-              <p class="error">[+error.fax+]</p>
-            </iferror>
-          </td>
-        </tr>
       </tbody>
     </table>
   </fieldset>
