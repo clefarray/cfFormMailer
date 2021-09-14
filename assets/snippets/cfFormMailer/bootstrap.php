@@ -11,7 +11,6 @@
  */
 
 /** @var documentParser $modx */
-
 if ($modx->isBackend()) {
     return '';
 }
@@ -25,7 +24,6 @@ define('CFM_PATH', __DIR__ . '/');
 include_once(CFM_PATH . 'class.cfFormMailer.inc.php');
 
 $mf = new Class_cfFormMailer($modx);
-
 $mf->parseConfig($config);
 
 if ($mf->hasSystemError()) {
@@ -39,39 +37,40 @@ if (is_file(CFM_PATH . 'additionalMethods.inc.php')) {
     include_once CFM_PATH . 'additionalMethods.inc.php';
 }
 
-
 /**
  * Action
  */
-if ($_POST['_mode'] === 'conf') {
-    $pageType = ($mf->validate()) ? 'conf' : 'error';
-} elseif ($_POST['_mode'] === 'send') {
-    if (isset($_POST['return'])) {
-        if (!$mf->validate()) {
-            return $mf->raiseError('未知のエラーです');
-        }
-        $pageType = 'return';
-    }elseif ($mf->validate()) {
-        if ($mf->isMultiple())    return $mf->raiseError('すでに送信しています');
-        if (!$mf->isValidToken()) return $mf->raiseError('画面遷移が正常に行われませんでした');
-        if (!$mf->sendMail())     return $mf->raiseError($mf->getError());
+if (postv('_mode') === 'conf') {
+    return cf_create_view(
+        ($mf->validate()) ? 'conf' : 'error',
+        $mf
+    );
+}
 
-        $mf->storeDataInSession();
-        $mf->storeDB();
-        $pageType = 'comp';
-    } else {
-        $pageType = 'error';
+if (postv('_mode') !== 'send') {
+    return cf_create_view('input', $mf);
+}
+
+if (postv('return')) {
+    if (!$mf->validate()) {
+        return $mf->raiseError('未知のエラーです');
     }
-} else {
-    $pageType = 'input';
+    return cf_create_view('return', $mf);
+}
+if (!$mf->validate()) {
+    return cf_create_view('error', $mf);
 }
 
-/**
- * Display page
- */
-$html = $mf->createPageHtml($pageType);
-if ($html) {
-    return $html;
+if ($mf->isMultiple()) {
+    return $mf->raiseError('すでに送信しています');
+}
+if (!$mf->isValidToken()) {
+    return $mf->raiseError('画面遷移が正常に行われませんでした');
+}
+if (!$mf->sendMail()) {
+    return $mf->raiseError($mf->getError());
 }
 
-return $mf->raiseError($mf->getError());
+$mf->storeDataInSession();
+$mf->storeDB();
+return cf_create_view('comp', $mf);
