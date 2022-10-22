@@ -481,13 +481,6 @@ class Class_cfFormMailer {
             return false;
         }
         
-        // 送信メールの文字コード
-        if ($this->config('mail_charset')) {
-            $mailCharset = $this->config('mail_charset');
-        } else {
-            $mailCharset = 'iso-2022-jp-ms';
-        }
-
         // 管理者メールアドレス特定
         if (!$this->config('dynamic_send_to_field')) {
             $mails = explode(',', $this->config('admin_mail'));
@@ -581,7 +574,7 @@ class Class_cfFormMailer {
             $pm->addReplyTo($reply_to);
         }
         $pm->Sender = $pm->From;
-        $pm->Body = mb_convert_encoding($tmpl, $mailCharset, $this->config('charset'));
+        $pm->Body = mb_convert_encoding($tmpl, $this->config('mail_charset'), $this->config('charset'));
         $pm->Encoding = '7bit';
 
         // ユーザーからのファイル送信
@@ -595,7 +588,7 @@ class Class_cfFormMailer {
                     $attach_file['path'],
                     mb_convert_encoding(
                         urldecode(basename($attach_file['path'])),
-                        $mailCharset,
+                        $this->config('mail_charset'),
                         $this->config('charset')
                     )
                 );
@@ -669,7 +662,7 @@ class Class_cfFormMailer {
                     $this->config('allow_html') ? '<br />' : "\n"
                 )
             ),
-            $mailCharset,
+            $this->config('mail_charset'),
             $this->config('charset')
         );
         $pm->Encoding = '7bit';
@@ -681,7 +674,7 @@ class Class_cfFormMailer {
                 $pm->AddAttachment(
                     $this->config('attach_file')
                     , mb_convert_encoding($this->config('attach_file_name')
-                        , $mailCharset, $this->config('charset')
+                        , $this->config('mail_charset'), $this->config('charset')
                     )
                 );
             }
@@ -698,7 +691,7 @@ class Class_cfFormMailer {
                     $attach_file['path']
                     , mb_convert_encoding(
                         urldecode(basename($attach_file['path'])),
-                        $mailCharset,
+                        $this->config('mail_charset'),
                         $this->config('charset')
                     )
                 );
@@ -1738,6 +1731,7 @@ class Class_cfFormMailer {
             'allow_html'     => 0,
             'autosave'       => 0,
             'send_mail'      => 1,
+            'mail_charset'   => 'iso-2022-jp-ms',
         );
     }
 
