@@ -171,33 +171,33 @@ class Class_cfFormMailer {
                 // アップロードファイル関連
                 if (is_array($_FILES) && count($_FILES)) {
                     unset($_SESSION['_cf_uploaded']);
-                    foreach ($_FILES as $field => $vals) {
-                        if ($_FILES[$field]['error'] != $this->config('upload_err_ok')) {
+                    foreach ($_FILES as $field => $var) {
+                        if ($var['error'] != $this->config('upload_err_ok')) {
                             continue;
                         }
                         if ($this->config('upload_tmp_path')) {
                             $new_filepath = sprintf(
                                 '%stmp/%s'
                                 , CFM_PATH
-                                , urlencode($_FILES[$field]['name']
+                                , urlencode($var['name']
                                 )
                             );
                         } else {
                             $new_filepath = sprintf(
                                 '%s/%s'
-                                , dirname($_FILES[$field]['tmp_name'])
-                                , urlencode($_FILES[$field]['name']
+                                , dirname($var['tmp_name'])
+                                , urlencode($var['name']
                                 )
                             );
                         }
-                        evo()->move_uploaded_file($_FILES[$field]['tmp_name'], $new_filepath);
+                        evo()->move_uploaded_file($var['tmp_name'], $new_filepath);
                         $mime = $this->_getMimeType($new_filepath, $field);
                         $_SESSION['_cf_uploaded'][$field] = array(
                             'path' => $new_filepath,
                             'mime' => $mime
                         );
                         // プレースホルダ定義
-                        $name =  evo()->htmlspecialchars($_FILES[$field]['name'], ENT_QUOTES);
+                        $name =  evo()->htmlspecialchars($var['name'], ENT_QUOTES);
                         $type = strtoupper($this->_getType($mime));
                         if (strpos($mime, 'image/') === 0) {
                             $values[sprintf('%d.imagename', $field)]   = $name;
