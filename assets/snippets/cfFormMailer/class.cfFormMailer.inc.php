@@ -200,11 +200,11 @@ class Class_cfFormMailer {
                         $name =  evo()->htmlspecialchars($var['name'], ENT_QUOTES);
                         $type = strtoupper($this->_getType($mime));
                         if (strpos($mime, 'image/') === 0) {
-                            $values[sprintf('%d.imagename', $field)]   = $name;
-                            $values[sprintf('%d.imagetype', $field)]   = $type;
+                            $values[sprintf('%s.imagename', $field)]   = $name;
+                            $values[sprintf('%s.imagetype', $field)]   = $type;
                         } else {
-                            $values[sprintf('%d.filename', $field)] = $name;
-                            $values[sprintf('%d.filetype', $field)] = $type;
+                            $values[sprintf('%s.filename', $field)] = $name;
+                            $values[sprintf('%s.filetype', $field)] = $type;
                         }
                     }
                 }
