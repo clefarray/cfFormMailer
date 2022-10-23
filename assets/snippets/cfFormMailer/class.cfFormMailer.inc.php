@@ -175,21 +175,11 @@ class Class_cfFormMailer {
                         if (!empty($var['error']) && $var['error'] !== $this->config('upload_err_ok')) {
                             continue;
                         }
-                        if ($this->config('upload_tmp_path')) {
-                            $new_filepath = sprintf(
-                                '%stmp/%s'
-                                , CFM_PATH
-                                , urlencode($var['name']
-                                )
-                            );
-                        } else {
-                            $new_filepath = sprintf(
-                                '%s/%s'
-                                , dirname($var['tmp_name'])
-                                , urlencode($var['name']
-                                )
-                            );
-                        }
+                        $new_filepath = sprintf(
+                            '%s/%s',
+                            $this->upload_tmp_path($var['tmp_name']),
+                            $this->upload_tmp_filename($var['tmp_name'])
+                        );
                         evo()->move_uploaded_file($var['tmp_name'], $new_filepath);
                         $mime = $this->_getMimeType($new_filepath, $field);
                         $_SESSION['_cf_uploaded'][$field] = array(
@@ -251,6 +241,29 @@ class Class_cfFormMailer {
         return $text;
     }
 
+    private function upload_tmp_path($tmp_name) {
+        if (!$this->config('upload_tmp_path')) {
+            return dirname($tmp_name);
+        }
+        $tmp_path = CFM_PATH . 'tmp';
+        if(!is_dir($tmp_path) && !mkdir($tmp_path)) {
+            exit('ディレクトリを生成できません');
+        }
+        if(!is_writable($tmp_path)) {
+            exit('ディレクトリに書き込めません');
+        }
+        return $tmp_path;
+    }
+
+    private function upload_tmp_filename($tmp_name) {
+        $info = getimagesize($tmp_name);
+        return sprintf(
+            '%s.%s',
+            easy_hash($info['filename'].microtime(true).real_ip().user_agent()),
+            $this->_getType($info['mime'])
+        );
+    }
+    
     private function getToken() {
         return base_convert(str_shuffle(mt_rand()),10,36);
     }
