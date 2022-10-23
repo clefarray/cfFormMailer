@@ -172,7 +172,7 @@ class Class_cfFormMailer {
                 if (is_array($_FILES) && count($_FILES)) {
                     unset($_SESSION['_cf_uploaded']);
                     foreach ($_FILES as $field => $var) {
-                        if ($var['error'] != $this->config('upload_err_ok')) {
+                        if (!empty($var['error']) && $var['error'] !== $this->config('upload_err_ok')) {
                             continue;
                         }
                         if ($this->config('upload_tmp_path')) {
