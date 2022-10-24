@@ -175,15 +175,15 @@ class Class_cfFormMailer {
                         if (!empty($var['error']) && $var['error'] !== $this->config('upload_err_ok')) {
                             continue;
                         }
-                        $new_filepath = sprintf(
-                            '%s/%s',
-                            $this->upload_tmp_path($var['tmp_name']),
-                            $this->upload_tmp_filename($var['tmp_name'])
-                        );
-                        evo()->move_uploaded_file($var['tmp_name'], $new_filepath);
-                        $mime = $this->_getMimeType($new_filepath, $field);
+                        $confirm_tmp_name = (
+                            $this->config('upload_tmp_path')
+                                ? $this->cfm_upload_tmp_name($var['tmp_name'])
+                                : $var['tmp_name']
+                            ) . $this->extension($var['tmp_name']);
+                        evo()->move_uploaded_file($var['tmp_name'], $confirm_tmp_name);
+                        $mime = $this->_getMimeType($confirm_tmp_name, $field);
                         $_SESSION['_cf_uploaded'][$field] = array(
-                            'path' => $new_filepath,
+                            'path' => $confirm_tmp_name,
                             'mime' => $mime
                         );
                         // プレースホルダ定義
@@ -241,10 +241,12 @@ class Class_cfFormMailer {
         return $text;
     }
 
-    private function upload_tmp_path($tmp_name) {
-        if (!$this->config('upload_tmp_path')) {
-            return dirname($tmp_name);
-        }
+    private function extension($tmp_name) {
+        $info = getimagesize($tmp_name);
+        return '.' . $this->_getType($info['mime']);
+    }
+
+    private function cfm_upload_tmp_name($tmp_name) {
         $tmp_path = CFM_PATH . 'tmp';
         if(!is_dir($tmp_path) && !mkdir($tmp_path)) {
             exit('ディレクトリを生成できません');
@@ -252,18 +254,9 @@ class Class_cfFormMailer {
         if(!is_writable($tmp_path)) {
             exit('ディレクトリに書き込めません');
         }
-        return $tmp_path;
+        return $tmp_path . substr($tmp_name, strlen(dirname($tmp_name)));
     }
 
-    private function upload_tmp_filename($tmp_name) {
-        $info = getimagesize($tmp_name);
-        return sprintf(
-            '%s.%s',
-            easy_hash($info['filename'].microtime(true).real_ip().user_agent()),
-            $this->_getType($info['mime'])
-        );
-    }
-    
     private function getToken() {
         return base_convert(str_shuffle(mt_rand()),10,36);
     }
