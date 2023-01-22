@@ -649,6 +649,7 @@ class Class_cfFormMailer {
             $this->setError('メールテンプレートの読み込みに失敗しました');
             return false;
         }
+        $form_u = [];
         if ($this->config('reply_ishtml')) {
             if ($this->config('allow_html')) {
                 $form_u = $this->nl2br_array($this->form);
