@@ -53,12 +53,9 @@ class Class_cfFormMailer {
     public function __construct(&$modx) {
 
         // 変数初期設定
-        $this->form = array();
+        $this->form = $this->getFormVariables($_POST);
         $this->error_message ='';
         $this->formError = array();
-
-        // postされたデータを読み取り
-        $this->form = $this->getFormVariables($_POST);
 
         // uploadクラス読み込み
         if (is_file(__DIR__ . '/class.upload.php')) {
