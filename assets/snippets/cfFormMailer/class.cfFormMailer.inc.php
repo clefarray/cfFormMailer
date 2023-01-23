@@ -2183,7 +2183,7 @@ class Class_cfFormMailer {
     private function _f_num($text, $param) {
 
         if (is_array($text)) {
-            return array_map($this->_f_num, $text, $param);
+            return array_map([$this,'_f_num'], $text, $param);
         }
 
         return number_format($text);
@@ -2195,7 +2195,7 @@ class Class_cfFormMailer {
     private function _f_dateformat($text, $param) {
 
         if (is_array($text)) {
-            return array_map($this->_f_dateformat, $text, $param);
+            return array_map([$this,'_f_dateformat'], $text, $param);
         }
 
         return strftime($param, strtotime($text));
@@ -2207,7 +2207,7 @@ class Class_cfFormMailer {
     private function _f_sprintf($text, $param) {
 
         if (is_array($text)) {
-            return array_map($this->_f_sprintf, $text, $param);
+            return array_map([$this,'_f_sprintf'], $text, $param);
         }
 
         return sprintf($param, $text);
