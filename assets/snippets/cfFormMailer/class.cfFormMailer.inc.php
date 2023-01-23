@@ -241,6 +241,14 @@ class Class_cfFormMailer {
         return $text;
     }
 
+    public function create_view($pageType) {
+        $html = $this->createPageHtml($pageType);
+        if (!$html) {
+            return $this->raiseError($this->getError());
+        }
+        return $html;
+    }
+
     private function extension($tmp_name) {
         $info = getimagesize($tmp_name);
         return '.' . $this->_getType($info['mime']);
@@ -2218,12 +2226,4 @@ if (!function_exists('db')) {
         global $modx;
         return $modx->db;
     }
-}
-
-function cf_create_view($pageType, $mf) {
-    $html = $mf->createPageHtml($pageType);
-    if (!$html) {
-        return $mf->raiseError($mf->getError());
-    }
-    return $html;
 }

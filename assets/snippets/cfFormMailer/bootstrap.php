@@ -41,24 +41,23 @@ if (is_file(CFM_PATH . 'additionalMethods.inc.php')) {
  * Action
  */
 if (postv('_mode') === 'conf') {
-    return cf_create_view(
+    return $mf->create_view(
         ($mf->validate()) ? 'conf' : 'error',
-        $mf
     );
 }
 
 if (postv('_mode') !== 'send') {
-    return cf_create_view('input', $mf);
+    return $mf->create_view('input');
 }
 
 if (postv('return')) {
     if (!$mf->validate()) {
         return $mf->raiseError('未知のエラーです');
     }
-    return cf_create_view('return', $mf);
+    return $mf->create_view('return');
 }
 if (!$mf->validate()) {
-    return cf_create_view('error', $mf);
+    return $mf->create_view('error');
 }
 
 if ($mf->isMultiple()) {
@@ -73,4 +72,4 @@ if (!$mf->sendMail()) {
 
 $mf->storeDataInSession();
 $mf->storeDB();
-return cf_create_view('comp', $mf);
+return $mf->create_view('comp');
