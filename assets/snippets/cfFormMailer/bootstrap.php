@@ -4,7 +4,7 @@
  * 
  * @author  Clefarray Factory
  * @link  http://www.clefarray-web.net/
- * @version 1.6
+ * @version 1.6.1
  *
  * Documentation: http://www.clefarray-web.net/blog/manual/cfFormMailer_manual.html
  * LICENSE: GNU General Public License (GPL) (http://www.gnu.org/copyleft/gpl.html)
@@ -30,46 +30,42 @@ if ($mf->hasSystemError()) {
     return '<strong>ERROR!</strong> ' . $mf->getSystemError();
 }
 
-/**
- * read validate & filter methods
- */
 if (is_file(CFM_PATH . 'additionalMethods.inc.php')) {
     include_once CFM_PATH . 'additionalMethods.inc.php';
 }
 
-/**
- * Action
- */
-if (postv('_mode') === 'conf') {
-    return $mf->create_view(
-        ($mf->validate()) ? 'conf' : 'error',
-    );
-}
-
-if (postv('_mode') !== 'send') {
-    return $mf->create_view('input');
+if (!postv()) {
+    return $mf->renderForm();
 }
 
 if (postv('return')) {
-    if (!$mf->validate()) {
-        return $mf->raiseError('未知のエラーです');
-    }
-    return $mf->create_view('return');
-}
-if (!$mf->validate()) {
-    return $mf->create_view('error');
+    return $mf->renderFormOnBack();
 }
 
-if ($mf->isMultiple()) {
+if ($mf->alreadySent()) {
     return $mf->raiseError('すでに送信しています');
 }
-if (!$mf->isValidToken()) {
-    return $mf->raiseError('画面遷移が正常に行われませんでした');
-}
-if (!$mf->sendMail()) {
-    return $mf->raiseError($mf->getError());
+
+if (postv('_mode') === 'conf') {
+    if(!$mf->validate()) {
+        return $mf->renderFormWithError();
+    }
+    return $mf->renderConfirm();
 }
 
-$mf->storeDataInSession();
-$mf->storeDB();
-return $mf->create_view('comp');
+if (postv('_mode') === 'send') {
+    if (!$mf->isValidToken(postv('_cffm_token'))) {
+        return $mf->raiseError('画面遷移が正常に行われませんでした');
+    }
+    $sent = $mf->sendMail();
+    if (!$sent) {
+        return $mf->raiseError($mf->getError());
+    }
+    
+    $mf->storeDataInSession();
+    $mf->storeDB();
+    
+    return $mf->renderComplete();
+}
+
+return $mf->renderForm();

@@ -63,16 +63,220 @@ class Class_cfFormMailer {
         }
     }
 
-    /**
-     * 現在のモードからHTML文書を取得・作成
-     *
-     * @access public
-     * @param  string $mode 現在のモード(input / conf / comp / error / return)
-     * @return string HTML文書
-     */
-    public function createPageHtml($mode) {
+    public function renderForm() {
+        $text = $this->loadTemplate($this->config('tmpl_input'));
 
-        if ($mode === 'comp' && $this->config('complete_redirect')) {
+        if ($text === false) {
+            return false;
+        }
+
+        if ($this->config('vericode')) {
+            $text = $this->replacePlaceHolder($text, array('verimageurl' => $this->getCaptchaUri()));
+        }
+        $text = preg_replace(
+            "@\ssendto=([\"']).+?\\1@i",
+            '',
+            preg_replace(
+                "/\svalid=([\"']).+?\\1/i",
+                '',
+                $text
+            )
+        );
+
+        if (isset($_SESSION['_cf_autosave'])) {
+            $text = $this->restoreForm($text, $_SESSION['_cf_autosave']);
+        }
+
+        // 余った<iferror>タグ、プレースホルダを削除
+        $text = $this->clearPlaceHolder(
+            preg_replace("@<iferror.*?>.+?</iferror>@uism", '', $text)
+        );
+
+        // 次の処理名をフォームに付記
+        return preg_replace(
+            '/(<form.*?>)/i',
+            '\\1<input type="hidden" name="_mode" value="conf" />',
+            $text
+        );
+    }
+
+    public function renderFormWithError() {
+        $text = $this->loadTemplate($this->config('tmpl_input'));
+
+        if ($text === false) {
+            return false;
+        }
+
+        // ポストされた内容を一時的に退避（事故対策）
+        if($this->config('autosave')) {
+            $_SESSION['_cf_autosave'] = $this->form;
+        }
+
+        // CAPTCHA  # Added in v0.0.5
+        if ($this->config('vericode')) {
+            $text = $this->replacePlaceHolder($text, array('verimageurl' => $this->getCaptchaUri()));
+        }
+        $text = preg_replace(
+            "/\ssendto=([\"']).+?\\1/i",
+            '',
+            preg_replace(
+                "/\svalid=([\"']).+?\\1/i",
+                '',
+                $text
+            )
+        );
+
+        // エラーメッセージを付記
+        $text = $this->restoreForm(
+            $this->replacePlaceHolder(
+                $this->assignErrorClass(
+                    $this->assignErrorTag(
+                        $text,
+                        $this->getFormError()
+                    ),
+                    $this->getFormError()
+                ),
+                $this->getFormError()
+            ),
+            $this->form
+        );
+        // 「戻り」の場合は入力値のみ復元
+
+        // 余った<iferror>タグ、プレースホルダを削除
+        $text = $this->clearPlaceHolder(
+            preg_replace("@<iferror.*?>.+?</iferror>@uism", '', $text)
+        );
+
+        return preg_replace(
+            '/(<form.*?>)/i',
+            '\\1<input type="hidden" name="_mode" value="conf" />',
+            $text
+        );
+    }
+
+    public function renderFormOnBack() {
+        // ページテンプレート読み込み
+        $text = $this->loadTemplate($this->config('tmpl_input'));
+
+        if ($text === false) {
+            return false;
+        }
+
+        if ($this->config('vericode')) {
+            $text = $this->replacePlaceHolder($text, array('verimageurl' => $this->getCaptchaUri()));
+        }
+        $text = preg_replace(
+            "/\ssendto=([\"']).+?\\1/i",
+            '',
+            preg_replace(
+                "/\svalid=([\"']).+?\\1/i",
+                '',
+                $text
+            )
+        );
+
+        $text = $this->restoreForm($text, $this->form);
+        // アップロード済みのファイルを削除
+        if (is_array($_SESSION['_cf_uploaded']) && count($_SESSION['_cf_uploaded'])) {
+            foreach ($_SESSION['_cf_uploaded'] as $filedata) {
+                @unlink($filedata['path']);
+            }
+            unset($_SESSION['_cf_uploaded']);
+        }
+
+        // 余った<iferror>タグ、プレースホルダを削除
+        $text = $this->clearPlaceHolder(
+            preg_replace("@<iferror.*?>.+?</iferror>@uism", '', $text)
+        );
+
+        return preg_replace(
+            '/(<form.*?>)/i',
+            '\\1<input type="hidden" name="_mode" value="conf" />',
+            $text
+        );
+    }
+
+    public function renderConfirm() {
+        $text = $this->loadTemplate($this->config('tmpl_conf'));
+        if ($text === false) {
+            return false;
+        }
+
+        // ポストされた内容を一時的に退避（事故対策）
+        if($this->config('autosave')) {
+            $_SESSION['_cf_autosave'] = $this->form;
+        }
+
+        $values = $this->encodeHTML($this->form, true);
+        $values = $this->convertNullToStr($values, '&nbsp;');
+        if ($this->config('auto_reply')) {
+            $values['reply_to'] = $this->getAutoReplyAddress();
+        }
+        // アップロードファイル関連
+        if (is_array($_FILES) && count($_FILES)) {
+            unset($_SESSION['_cf_uploaded']);
+            foreach ($_FILES as $field => $var) {
+                if (!empty($var['error']) && $var['error'] !== $this->config('upload_err_ok')) {
+                    continue;
+                }
+                $confirm_tmp_name = (
+                    $this->config('upload_tmp_path')
+                        ? $this->cfm_upload_tmp_name($var['tmp_name'])
+                        : $var['tmp_name']
+                    ) . $this->extension($var['tmp_name']);
+                evo()->move_uploaded_file($var['tmp_name'], $confirm_tmp_name);
+                $mime = $this->_getMimeType($confirm_tmp_name, $field);
+                $_SESSION['_cf_uploaded'][$field] = array(
+                    'path' => $confirm_tmp_name,
+                    'mime' => $mime
+                );
+                // プレースホルダ定義
+                $name =  evo()->htmlspecialchars($var['name'], ENT_QUOTES);
+                $type = strtoupper($this->_getType($mime));
+                if (strpos($mime, 'image/') === 0) {
+                    $values[sprintf('%s.imagename', $field)]   = $name;
+                    $values[sprintf('%s.imagetype', $field)]   = $type;
+                } else {
+                    $values[sprintf('%s.filename', $field)] = $name;
+                    $values[sprintf('%s.filetype', $field)] = $type;
+                }
+            }
+        }
+        $text = $this->addHiddenTags(
+            $this->replacePlaceHolder(
+                $text,
+                $values
+            ),
+            $this->form
+        );
+
+        // ワンタイムトークンを生成
+        $token = $this->getToken();
+        $_SESSION['_cffm_token'] = $token;
+        $text = str_ireplace(
+            '</form>'
+            , sprintf(
+                '<input type="hidden" name="_cffm_token" value="%s" /></form>'
+                , $token
+            )
+            , $text
+        );
+
+        // 余った<iferror>タグ、プレースホルダを削除
+        $text = $this->clearPlaceHolder(
+            preg_replace("@<iferror.*?>.+?</iferror>@uism", '', $text)
+        );
+
+        return preg_replace(
+            '/(<form.*?>)/i',
+            '\\1<input type="hidden" name="_mode" value="send" />',
+            $text
+        );
+    }
+
+    public function renderComplete() {
+
+        if ($this->config('complete_redirect')) {
             if(isset($_SESSION['_cf_autosave'])) {
                 unset($_SESSION['_cf_autosave']);
             }
@@ -84,166 +288,20 @@ class Class_cfFormMailer {
             exit;
         }
 
-        // ページテンプレート読み込み
-        if (in_array($mode,array('input','error','return'))) {
-            $text = $this->loadTemplate($this->config('tmpl_input'));
-        } elseif($mode === 'conf') {
-            $text = $this->loadTemplate($this->config('tmpl_conf'));
-        } elseif($mode === 'comp') {
-            $text = $this->loadTemplate($this->config('tmpl_comp'));
-        } else {
-            return false;
-        }
+        $text = $this->loadTemplate($this->config('tmpl_comp'));
 
         if ($text === false) {
-            if (postv()) {
-                pr(postv());
-            }
             return false;
         }
 
-        // ポストされた内容を一時的に退避（事故対策）
-        if ($mode === 'error' || $mode === 'conf') {
-            if($this->config('autosave')) {
-                $_SESSION['_cf_autosave'] = $this->form;
-            }
-        }
-
-        // アクションごとの処理
-        switch ($mode) {
-            case 'input':
-            case 'error':
-            case 'return':
-                $nextMode = 'conf';
-                // CAPTCHA  # Added in v0.0.5
-                if ($this->config('vericode')) {
-                    $text = $this->replacePlaceHolder($text, array('verimageurl' => $this->getCaptchaUri()));
-                }
-                $text = preg_replace(
-                    "/\ssendto=([\"']).+?\\1/i",
-                    '',
-                    preg_replace(
-                        "/\svalid=([\"']).+?\\1/i",
-                        '',
-                        $text
-                    )
-                );
-
-                // エラーの場合は入力値とエラーメッセージを付記
-                if ($mode === 'error') {
-                    $text = $this->restoreForm(
-                        $this->replacePlaceHolder(
-                            $this->assignErrorClass(
-                                $this->assignErrorTag(
-                                    $text,
-                                    $this->getFormError()
-                                ),
-                                $this->getFormError()
-                            ),
-                            $this->getFormError()
-                        ),
-                        $this->form
-                    );
-                    // 「戻り」の場合は入力値のみ復元
-                } elseif ($mode === 'return') {
-                    $text = $this->restoreForm($text, $this->form);
-                    // アップロード済みのファイルを削除
-                    if (is_array($_SESSION['_cf_uploaded']) && count($_SESSION['_cf_uploaded'])) {
-                        foreach ($_SESSION['_cf_uploaded'] as $filedata) {
-                            @unlink($filedata['path']);
-                        }
-                        unset($_SESSION['_cf_uploaded']);
-                    }
-                } elseif ($mode === 'input' && isset($_SESSION['_cf_autosave'])) {
-                    $text = $this->restoreForm($text, $_SESSION['_cf_autosave']);
-                }
-                break;
-            case 'conf':
-                $nextMode = 'send';
-                $values = $this->encodeHTML($this->form, true);
-                $values = $this->convertNullToStr($values, '&nbsp;');
-                if ($this->config('auto_reply')) {
-                    $values['reply_to'] = $this->getAutoReplyAddress();
-                }
-                // アップロードファイル関連
-                if (is_array($_FILES) && count($_FILES)) {
-                    unset($_SESSION['_cf_uploaded']);
-                    foreach ($_FILES as $field => $var) {
-                        if (!empty($var['error']) && $var['error'] !== $this->config('upload_err_ok')) {
-                            continue;
-                        }
-                        $confirm_tmp_name = (
-                            $this->config('upload_tmp_path')
-                                ? $this->cfm_upload_tmp_name($var['tmp_name'])
-                                : $var['tmp_name']
-                            ) . $this->extension($var['tmp_name']);
-                        evo()->move_uploaded_file($var['tmp_name'], $confirm_tmp_name);
-                        $mime = $this->_getMimeType($confirm_tmp_name, $field);
-                        $_SESSION['_cf_uploaded'][$field] = array(
-                            'path' => $confirm_tmp_name,
-                            'mime' => $mime
-                        );
-                        // プレースホルダ定義
-                        $name =  evo()->htmlspecialchars($var['name'], ENT_QUOTES);
-                        $type = strtoupper($this->_getType($mime));
-                        if (strpos($mime, 'image/') === 0) {
-                            $values[sprintf('%s.imagename', $field)]   = $name;
-                            $values[sprintf('%s.imagetype', $field)]   = $type;
-                        } else {
-                            $values[sprintf('%s.filename', $field)] = $name;
-                            $values[sprintf('%s.filetype', $field)] = $type;
-                        }
-                    }
-                }
-                $text = $this->addHiddenTags(
-                    $this->replacePlaceHolder(
-                        $text,
-                        $values
-                    ),
-                    $this->form
-                );
-
-                // ワンタイムトークンを生成
-                $token = $this->getToken();
-                $_SESSION['_cffm_token'] = $token;
-                $text = str_ireplace(
-                    '</form>'
-                    , sprintf(
-                        '<input type="hidden" name="_cffm_token" value="%s" /></form>'
-                        , $token
-                    )
-                    , $text
-                );
-                break;
-            case 'comp':
-                $nextMode = '';
-                $text = $this->replacePlaceHolder($text, $this->encodeHTML($this->form));
-                break;
-        }
+        $text = $this->replacePlaceHolder($text, $this->encodeHTML($this->form));
 
         // 余った<iferror>タグ、プレースホルダを削除
         $text = $this->clearPlaceHolder(
             preg_replace("@<iferror.*?>.+?</iferror>@uism", '', $text)
         );
 
-        // 次の処理名をフォームに付記
-        if ($nextMode) {
-            $text = preg_replace(
-                '/(<form.*?>)/i',
-                '\\1<input type="hidden" name="_mode" value="' . $nextMode . '" />',
-                $text
-            );
-        }
-
         return $text;
-    }
-
-    public function create_view($pageType) {
-        $html = $this->createPageHtml($pageType);
-        if (!$html) {
-            return $this->raiseError($this->getError());
-        }
-        return $html;
     }
 
     private function extension($tmp_name) {
@@ -378,7 +436,9 @@ class Class_cfFormMailer {
 
             $fieldName = str_replace('[]', '', $m_name[2]);
             // 復元処理しないタグ
-            if ($fieldName === '_mode') continue;
+            if ($fieldName === '_mode') {
+                continue;
+            }
 
             switch($m_type[2]) {
                 // 復元処理しないタグ
@@ -420,41 +480,50 @@ class Class_cfFormMailer {
                 }
             // プルダウンリスト
             } elseif ($tag[1] === 'select') {
-                $pat = $rep = '';
+                $pat = '';
+                $rep = '';
                 $tag_opt = array();
-                preg_match_all("/<option(.*?)value=(['\"])(.*?)\\2(.*?>)/uism", $tag[4], $tag_opt, PREG_SET_ORDER);
+                preg_match_all(
+                    "/<option(.*?)value=(['\"])(.*?)\\2(.*?>)/uism",
+                    $tag[4],
+                    $tag_opt, PREG_SET_ORDER
+                );
                 if (count($tag_opt) > 1) {
                     $old = $tag[0];
-                    foreach ($tag_opt as $opt_k => $opt_v) {$tag[0] = str_replace(
-                        $opt_v[0]
-                        , preg_replace("/selected(=(['\"])selected\\2)?/uism", '', $opt_v[0])
-                        , $tag[0]
-                    );
-                        if ($opt_v[3] == $params[$fieldName]) {
+                    foreach ($tag_opt as $v) {
+                        $tag[0] = str_replace(
+                            $v[0]
+                            , preg_replace(
+                                "/selected(=(['\"])selected\\2)?/uism",
+                                '',
+                                $v[0]
+                            )
+                            , $tag[0]
+                        );
+                        if ($v[3] == $params[$fieldName]) {
                             $tag[0] = str_replace(
-                                $opt_v[0]
-                                , str_replace(
-                                    $opt_v[4]
-                                    , ' selected="selected"'.$opt_v[4]
-                                    , $opt_v[0]
-                                )
-                                , $tag[0]
+                                $v[0],
+                                str_replace(
+                                    $v[4],
+                                    ' selected="selected"'.$v[4],
+                                    $v[0]
+                                ),
+                                $tag[0]
                             );
                         }
                     }
-                    $new = $tag[0];
-                    $html = str_replace($old, $new, $html);
+                    $html = str_replace($old, $tag[0], $html);
                 }
             // 複数行テキスト
             } elseif ($tag[1] === 'textarea') {
                 if ($params[$fieldName]) {
                     $pat = $tag[0];
                     $rep = sprintf(
-                        '<%s%s%s>%s</textarea>'
-                        , $tag[1]
-                        , $tag[2]
-                        , $tag[3]
-                        , $this->encodeHTML($params[$fieldName])
+                        '<%s%s%s>%s</textarea>',
+                        $tag[1],
+                        $tag[2],
+                        $tag[3],
+                        $this->encodeHTML($params[$fieldName])
                     );
                 }
             }
@@ -492,20 +561,7 @@ class Class_cfFormMailer {
             return false;
         }
         
-        // 管理者メールアドレス特定
-        if (!$this->config('dynamic_send_to_field')) {
-            $mails = explode(',', $this->config('admin_mail'));
-        } elseif (empty($_SESSION['dynamic_send_to'])) {
-            $mails = explode(',', $this->config('admin_mail'));
-        } elseif (!$this->form[$this->config('dynamic_send_to_field')]) {
-            $mails = explode(',', $this->config('admin_mail'));
-        } else {
-            $mails = explode(
-                ','
-                , $_SESSION['dynamic_send_to'][$this->form[$this->config('dynamic_send_to_field')]]
-            );
-        }
-
+        $mails = $this->makeAdminAddress();
         $admin_addresses = array();
         foreach ($mails as $buf) {
             $buf = trim($buf);
@@ -527,14 +583,21 @@ class Class_cfFormMailer {
         $reply_to = $this->getAutoReplyAddress();
 
         // 管理者宛メールの本文生成
-        if (!$tmpl = $this->loadTemplate($this->config('tmpl_mail_admin'))) {
+        $tmpl = $this->loadTemplate($this->config('tmpl_mail_admin'));
+        if (!$tmpl) {
             $this->setError('メールテンプレートの読み込みに失敗しました');
             return false;
         }
-        $form = $this->form;
+
         if ($this->config('admin_ishtml')) {
-            $form = $this->config('allow_html') ? $this->nl2br_array($form) : $this->encodeHTML($form, 'true');
+            $form = $this->config('allow_html')
+                ? $this->nl2br_array($this->form)
+                : $this->encodeHTML($this->form, 'true')
+            ;
+        } else {
+            $form = $this->form;
         }
+
         $tmpl = $this->clearPlaceHolder(
             $this->replacePlaceHolder(
                 str_replace(
@@ -654,13 +717,15 @@ class Class_cfFormMailer {
             $this->setError('メールテンプレートの読み込みに失敗しました');
             return false;
         }
-        $form_u = [];
+        
         if ($this->config('reply_ishtml')) {
             if ($this->config('allow_html')) {
                 $form_u = $this->nl2br_array($this->form);
             } else {
                 $form_u = $this->encodeHTML($this->form, 'true');
             }
+        } else {
+            $form_u = [];
         }
         $pm->Body = mb_convert_encoding(
             $this->clearPlaceHolder(
@@ -727,6 +792,22 @@ class Class_cfFormMailer {
         return true;
     }
 
+    private function makeAdminAddress() {
+        if (!$this->config('dynamic_send_to_field')) {
+            return explode(',', $this->config('admin_mail'));
+        }
+        if (empty($_SESSION['dynamic_send_to'])) {
+            return explode(',', $this->config('admin_mail'));
+        }
+        if (!$this->form[$this->config('dynamic_send_to_field')]) {
+            return explode(',', $this->config('admin_mail'));
+        }
+        return explode(
+            ','
+            , $_SESSION['dynamic_send_to'][$this->form[$this->config('dynamic_send_to_field')]]
+        );
+}
+
     /**
      * トークンをチェック
      *
@@ -734,10 +815,13 @@ class Class_cfFormMailer {
      * @param  void
      * @return boolean 結果
      */
-    public function isValidToken() {
-        $token = @$_SESSION['_cffm_token'];
+    public function isValidToken($token) {
+        if(empty($_SESSION['_cffm_token'])) {
+            return false;
+        }
+        $isValid = $_SESSION['_cffm_token'] === $token;
         unset($_SESSION['_cffm_token']);
-        return ($token == $_POST['_cffm_token']);
+        return $isValid;
     }
 
     /**
@@ -747,7 +831,7 @@ class Class_cfFormMailer {
      * @param  void
      * @return boolean 結果
      */
-    public function isMultiple() {
+    public function alreadySent() {
         return ($this->form === $_SESSION['_cffm_recently_send']);
     }
 
@@ -2222,5 +2306,40 @@ if (!function_exists('db')) {
     function db() {
         global $modx;
         return $modx->db;
+    }
+}
+
+if(!function_exists('getv')) {
+    function getv($key = null, $default = null)
+    {
+        $request = $_GET;
+        if(isset($request[$key]) && $request[$key]==='') {
+            unset($request[$key]);
+        }
+        return array_get($request, $key, $default);
+    }
+}
+
+if(!function_exists('postv')) {
+    function postv($key = null, $default = null)
+    {
+        return array_get($_POST, $key, $default);
+    }
+}
+
+if(!function_exists('serverv')) {
+    function serverv($key = null, $default = null)
+    {
+        return array_get($_SERVER, strtoupper($key), $default);
+    }
+}
+
+if(!function_exists('sessionv')) {
+    function sessionv($key = null, $default = null)
+    {
+        if (strpos($key, '*') === 0) {
+            return array_set($_SESSION, ltrim($key, '*'), $default);
+        }
+        return array_get($_SESSION, $key, $default);
     }
 }
