@@ -561,24 +561,6 @@ class Class_cfFormMailer {
             return false;
         }
         
-        $mails = $this->makeAdminAddress();
-        $admin_addresses = array();
-        foreach ($mails as $buf) {
-            $buf = trim($buf);
-            if ($this->_isValidEmail($buf)) {
-                $admin_addresses[] = $buf;
-            }
-        }
-
-        // 本文の準備
-        $additional = array(
-            'senddate'    => date('Y-m-d H:i:s'),
-            'adminmail'   => $admin_addresses[0],
-            'sender_ip'   => $_SERVER['REMOTE_ADDR'],
-            'sender_host' => gethostbyaddr($_SERVER['REMOTE_ADDR']),
-            'sender_ua'   => $this->encodeHTML($_SERVER['HTTP_USER_AGENT']),
-            'reply_to'    => $this->getAutoReplyAddress(),
-        );
 
         $reply_to = $this->getAutoReplyAddress();
 
@@ -589,29 +571,8 @@ class Class_cfFormMailer {
             return false;
         }
 
-        if ($this->config('admin_ishtml')) {
-            $form = $this->config('allow_html')
-                ? $this->nl2br_array($this->form)
-                : $this->encodeHTML($this->form, 'true')
-            ;
-        } else {
-            $form = $this->form;
-        }
-
-        $tmpl = $this->clearPlaceHolder(
-            $this->replacePlaceHolder(
-                str_replace(
-                    array(
-                        "\r\n",
-                        "\r"
-                    ),
-                    "\n",
-                    $tmpl
-                ),
-                $form + $additional,
-                $this->config('allow_html') ? '<br />' : "\n"
-            )
-        );
+        $admin_addresses = $this->makeAdminAddress();
+        $admin_address = $admin_addresses[0];
 
         // 管理者宛送信
         evo()->loadExtension('MODxMailer');
@@ -635,20 +596,24 @@ class Class_cfFormMailer {
                 }
             }
         }
-        if($this->config('admin_subject')) {
-            $pm->Subject = evo()->parseText($this->config('admin_subject'), $this->form);
-        } else {
-            $pm->Subject = 'サイトから送信されたメール';
-        }
+
+        $pm->Subject = $this->config('admin_subject')
+            ? evo()->parseText($this->config('admin_subject'), $this->form)
+            : 'サイトから送信されたメール'
+        ;
+
         $pm->setFrom(
-            $admin_addresses[0]
+            $admin_address
             , ($this->config('admin_name')) ? evo()->parseText($this->config('admin_name'),$this->form) : ''
         );
         if ($reply_to) {
             $pm->addReplyTo($reply_to);
         }
         $pm->Sender = $pm->From;
-        $pm->Body = mb_convert_encoding($tmpl, $this->config('mail_charset'), $this->config('charset'));
+        $pm->Body = $this->makeBody(
+            $tmpl,
+            ($this->makePh($this->form,$admin_address))
+        );
         $pm->Encoding = '7bit';
 
         // ユーザーからのファイル送信
@@ -671,7 +636,9 @@ class Class_cfFormMailer {
                 }
             }
         }
-        if (!$pm->Send()) {
+
+        $sent = $pm->Send();
+        if (!$sent) {
             $errormsg = 'メール送信に失敗しました::' . $pm->ErrorInfo;
             $this->setError($errormsg);
             $vars = nl2br(
@@ -695,16 +662,14 @@ class Class_cfFormMailer {
         evo()->loadExtension('MODxMailer');
         $pm = evo()->mail;
         $pm->AddAddress($reply_to);
-        if ($this->config('reply_subject')) {
-            $pm->Subject = evo()->parseText($this->config('reply_subject'), $this->form);
-        } else {
-            $pm->Subject = '自動返信メール';
-        }
+        $pm->Subject = $this->config('reply_subject')
+            ? evo()->parseText($this->config('reply_subject'), $this->form)
+            : '自動返信メール'
+        ;
         $pm->setFrom(
-            $admin_addresses[0]
-            , $this->config('reply_fromname')
+            $admin_address,
+            $this->config('reply_fromname')
         );
-        $pm->Sender = $pm->From;
         // モバイル用のテンプレート切り替え
         $pattern = '/(docomo\.ne\.jp|ezweb\.ne\.jp|softbank\.ne\.jp)$/';
         if ($this->config('tmpl_mail_reply_mobile') && preg_match($pattern, $reply_to)) {
@@ -718,29 +683,10 @@ class Class_cfFormMailer {
             return false;
         }
         
-        if ($this->config('reply_ishtml')) {
-            if ($this->config('allow_html')) {
-                $form_u = $this->nl2br_array($this->form);
-            } else {
-                $form_u = $this->encodeHTML($this->form, 'true');
-            }
-        } else {
-            $form_u = [];
-        }
-        $pm->Body = mb_convert_encoding(
-            $this->clearPlaceHolder(
-                $this->replacePlaceHolder(
-                    str_replace(
-                        array("\r\n", "\r"),
-                        "\n",
-                        $tmpl_u
-                    ),
-                    $form_u + $additional,
-                    $this->config('allow_html') ? '<br />' : "\n"
-                )
-            ),
-            $this->config('mail_charset'),
-            $this->config('charset')
+        $pm->Sender = $pm->From;
+        $pm->Body = $this->makeBody(
+            $tmpl_u,
+            ($this->makePh($this->form, $admin_address))
         );
         $pm->Encoding = '7bit';
         // 添付ファイル処理
@@ -756,31 +702,31 @@ class Class_cfFormMailer {
                 );
             }
         }
-        // ユーザーからのファイル送信
+
         if (!$upload_flag) {
-            $send_flag = $pm->Send();
+            $sent = $pm->Send();
         } else {
             foreach ($_SESSION['_cf_uploaded'] as $attach_file) {
                 if (!is_file($attach_file['path'])) {
                     continue;
                 }
                 $pm->AddAttachment(
-                    $attach_file['path']
-                    , mb_convert_encoding(
+                    $attach_file['path'],
+                    mb_convert_encoding(
                         urldecode(basename($attach_file['path'])),
                         $this->config('mail_charset'),
                         $this->config('charset')
                     )
                 );
             }
-            $send_flag = $pm->Send();
+            $sent = $pm->Send();
             foreach ($_SESSION['_cf_uploaded'] as $attach_file) {
                 unlink($attach_file['path']);
             }
             unset($_SESSION['_cf_uploaded']);
         }
 
-        if (!$send_flag) {
+        if (!$sent) {
             $errormsg = 'メール送信に失敗しました::' . $pm->ErrorInfo;
             $this->setError($errormsg);
             $vars = nl2br(evo()->htmlspecialchars(
@@ -792,21 +738,63 @@ class Class_cfFormMailer {
         return true;
     }
 
+    private function makeBody($tpl, $ph) {
+        return mb_convert_encoding(
+            $this->clearPlaceHolder(
+                $this->replacePlaceHolder(
+                    str_replace(
+                        array("\r\n", "\r"),
+                        "\n",
+                        $tpl
+                    ),
+                    $ph,
+                    $this->config('allow_html') ? '<br />' : "\n"
+                )
+            ),
+            $this->config('mail_charset'),
+            $this->config('charset')
+        );
+        }
+    private function makePh($form, $adminmail) {
+        $additional = array(
+            'senddate'    => date('Y-m-d H:i:s'),
+            'adminmail'   => $adminmail,
+            'sender_ip'   => $_SERVER['REMOTE_ADDR'],
+            'sender_host' => gethostbyaddr($_SERVER['REMOTE_ADDR']),
+            'sender_ua'   => $this->encodeHTML($_SERVER['HTTP_USER_AGENT']),
+            'reply_to'    => $this->getAutoReplyAddress(),
+        );
+        if (!$this->config('reply_ishtml')) {
+            return $form + $additional;
+        }
+        if (!$this->config('allow_html')) {
+            return $this->encodeHTML($form, 'true') + $additional;
+        }
+        return $this->nl2br_array($form) + $additional;
+    }
+
     private function makeAdminAddress() {
         if (!$this->config('dynamic_send_to_field')) {
-            return explode(',', $this->config('admin_mail'));
-        }
-        if (empty($_SESSION['dynamic_send_to'])) {
-            return explode(',', $this->config('admin_mail'));
-        }
-        if (!$this->form[$this->config('dynamic_send_to_field')]) {
-            return explode(',', $this->config('admin_mail'));
-        }
-        return explode(
+            $mails = explode(',', $this->config('admin_mail'));
+        } elseif (empty($_SESSION['dynamic_send_to'])) {
+            $mails = explode(',', $this->config('admin_mail'));
+        } elseif (!$this->form[$this->config('dynamic_send_to_field')]) {
+            $mails = explode(',', $this->config('admin_mail'));
+        } else {
+            $mails = explode(
             ','
             , $_SESSION['dynamic_send_to'][$this->form[$this->config('dynamic_send_to_field')]]
         );
 }
+        $admin_addresses = array();
+        foreach ($mails as $buf) {
+            $buf = trim($buf);
+            if ($this->_isValidEmail($buf)) {
+                $admin_addresses[] = $buf;
+            }
+        }
+        return $admin_addresses;
+    }
 
     /**
      * トークンをチェック
