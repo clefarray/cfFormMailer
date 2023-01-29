@@ -62,6 +62,7 @@ if (postv('_mode') === 'send') {
         return $mf->raiseError($mf->getError());
     }
     
+    $mf->cleanUploadedFiles();
     $mf->storeDataInSession();
     $mf->storeDB();
     

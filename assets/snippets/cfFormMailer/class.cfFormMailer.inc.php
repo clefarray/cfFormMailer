@@ -410,7 +410,7 @@ class Class_cfFormMailer {
             }
         }
 
-        return (!count($this->formError));
+        return $this->formError ? false : true;
     }
 
     /**
@@ -550,18 +550,29 @@ class Class_cfFormMailer {
      * @return boolean 結果
      */
     public function sendMail() {
-
-        // send_mail環境設定が0の場合は送信しない
         if (!$this->config('send_mail')) {
             return false;
         }
 
-        if (!count($this->form)) {
+        if (!$this->form) {
             $this->setError('フォームが取得できません');
             return false;
         }
         
+        $rs = $this->sendAdminMail();
+        if(!$rs) {
+            return false;
+        }
 
+        if(isset($_SESSION['_cf_autosave'])) {
+            unset($_SESSION['_cf_autosave']);
+        }
+
+        $rs = $this->sendAutoReply();
+        return $rs;
+    }
+
+    private function sendAdminMail() {
         $reply_to = $this->getAutoReplyAddress();
 
         // 管理者宛メールの本文生成
@@ -603,8 +614,10 @@ class Class_cfFormMailer {
         ;
 
         $pm->setFrom(
-            $admin_address
-            , ($this->config('admin_name')) ? evo()->parseText($this->config('admin_name'),$this->form) : ''
+            $admin_address,
+            $this->config('admin_name')
+                ? evo()->parseText($this->config('admin_name'),$this->form)
+                : ''
         );
         if ($reply_to) {
             $pm->addReplyTo($reply_to);
@@ -649,12 +662,12 @@ class Class_cfFormMailer {
             evo()->logEvent(1, 3,$errormsg.$vars);
             return false;
         }
-
-        if(isset($_SESSION['_cf_autosave'])) {
-            unset($_SESSION['_cf_autosave']);
+        return true;
         }
 
+    private function sendAutoReply() {
         // 自動返信
+        $reply_to = $this->getAutoReplyAddress();
         if (!$this->config('auto_reply') || !$reply_to) {
             return true;
         }
@@ -666,6 +679,8 @@ class Class_cfFormMailer {
             ? evo()->parseText($this->config('reply_subject'), $this->form)
             : '自動返信メール'
         ;
+        $admin_addresses = $this->makeAdminAddress();
+        $admin_address = $admin_addresses[0];
         $pm->setFrom(
             $admin_address,
             $this->config('reply_fromname')
@@ -703,9 +718,6 @@ class Class_cfFormMailer {
             }
         }
 
-        if (!$upload_flag) {
-            $sent = $pm->Send();
-        } else {
             foreach ($_SESSION['_cf_uploaded'] as $attach_file) {
                 if (!is_file($attach_file['path'])) {
                     continue;
@@ -720,11 +732,6 @@ class Class_cfFormMailer {
                 );
             }
             $sent = $pm->Send();
-            foreach ($_SESSION['_cf_uploaded'] as $attach_file) {
-                unlink($attach_file['path']);
-            }
-            unset($_SESSION['_cf_uploaded']);
-        }
 
         if (!$sent) {
             $errormsg = 'メール送信に失敗しました::' . $pm->ErrorInfo;
@@ -736,6 +743,19 @@ class Class_cfFormMailer {
             return false;
         }
         return true;
+    }
+
+    public function cleanUploadedFiles() {
+        if(empty($_SESSION['_cf_uploaded'])) {
+            return;
+        }
+        if(!is_array($_SESSION['_cf_uploaded'])) {
+            return;
+        }
+        foreach ($_SESSION['_cf_uploaded'] as $attach_file) {
+            unlink($attach_file['path']);
+        }
+        unset($_SESSION['_cf_uploaded']);
     }
 
     private function makeBody($tpl, $ph) {
@@ -1368,6 +1388,7 @@ class Class_cfFormMailer {
      * @return array|boolean 解析失敗の場合は false
      */
     private function parseForm($html) {
+        // print_r($html);
         $html = $this->extractForm($html, '');
         if ($html === false) {
             return false;
@@ -1622,15 +1643,22 @@ class Class_cfFormMailer {
         if (!$this->config('auto_reply')) {
             return '';
         }
+        if(strpos($this->config('reply_to'), '+')===false) {
+            return $this->form[$this->config('reply_to')];
+        }
+
         $reply_to = array();
         $tmp = explode('+', $this->config('reply_to'));
         foreach ($tmp as $t) {
             $t = trim($t);
             if ($t === '@') {
                 $reply_to[] = '@';
-            } else {
-                $reply_to[] = $this->form[$t];
+                continue;
             }
+            if(empty($this->form[$t])) {
+                exit('reply_toの設定が正しくありません');
+            }
+            $reply_to[] = $this->form[$t];
         }
         return implode('', $reply_to);
     }
