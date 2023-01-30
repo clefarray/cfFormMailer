@@ -1,0 +1,179 @@
+<p>以下のフォームに必要事項を入力し、「内容確認へ」ボタンを押してください。</p>
+<p><span class="require">※</span>印の項目は入力必須です。</p>
+
+<iferror><p class="error"><strong>入力に誤りがあります。</strong><br />訂正して再送信してください。</p></iferror>
+
+<form action="[~[*id*]~]" method="post" id="cf_sample_form">
+  <fieldset><legend>個人情報</legend>
+  <table>
+    <tbody>
+      <tr>
+        <th><label for="f_name">お名前</label><span class="require">※</span></th>
+        <td>姓<input type="text" name="name_f" size="10" id="f_name" valid="1" /> 名<input type="text" name="name_l" size="10" valid="1" />
+        <iferror.(name_f,name_l)><p class="error">姓名とも正しく入力してください</p></iferror></td>
+      </tr>
+      <tr>
+        <th><label for="f_company">会社名</label></th>
+        <td><input type="text" name="company" size="40" id="f_company" /><span class="note">※法人の方のみ</span></td>
+      </tr>
+      <tr>
+        <th><label for="f_email">メールアドレス</label><span class="require">※</span></th>
+        <td><input type="text" name="email1" size="30" id="f_email" />
+          <select name="email2">
+            <option value="">(指定無し)</option>
+            <option value="@docomo.ne.jp">@docomo.ne.jp</option>
+            <option value="@ezweb.ne.jp">@ezweb.ne.jp</option>
+            <option value="@softbank.co.jp">@softbank.co.jp</option>
+        </select>
+        <iferror.reply_to><p class="error">[+error.reply_to+]</p></iferror></td>
+      </tr>
+      <tr>
+        <th>性別<span class="require">※</span></th>
+        <td>
+          <input type="radio" name="gender" id="f_gender1" value="男性" valid="1::性別" /><label for="f_gender1">男性</label>
+          <input type="radio" name="gender" id="f_gender2" value="女性" /><label for="f_gender2">女性</label>
+        <iferror.gender><p class="error">[+error.gender+]</p></iferror></td>
+      </tr>
+      <tr>
+        <th><label for="f_zip">郵便番号</label><span class="require">※</span></th>
+        <td>
+          <input type="text" name="zip1" id="f_zip" size="4" valid="1:num,len(3)" /> - <input type="text" name="zip2" size="5" valid="1:num,len(4)" />
+        <iferror.(zip1,zip2)><p class="error">7桁の数字で正しく入力してください</p></iferror></td>
+      </tr>
+      <tr>
+        <th><label for="f_pref">都道府県</label><span class="require">※</span></th>
+        <td><select name="pref" valid="1" id="f_pref">
+          <option value="">選択してください</option>
+          <option value="北海道">北海道</option>
+          <option value="青森県">青森県</option>
+          <option value="岩手県">岩手県</option>
+          <option value="宮城県">宮城県</option>
+          <option value="秋田県">秋田県</option>
+          <option value="山形県">山形県</option>
+          <option value="福島県">福島県</option>
+          <option value="茨城県">茨城県</option>
+          <option value="栃木県">栃木県</option>
+          <option value="群馬県">群馬県</option>
+          <option value="埼玉県">埼玉県</option>
+          <option value="千葉県">千葉県</option>
+          <option value="東京都">東京都</option>
+          <option value="神奈川県">神奈川県</option>
+          <option value="山梨県">山梨県</option>
+          <option value="長野県">長野県</option>
+          <option value="新潟県">新潟県</option>
+          <option value="富山県">富山県</option>
+          <option value="石川県">石川県</option>
+          <option value="福井県">福井県</option>
+          <option value="岐阜県">岐阜県</option>
+          <option value="静岡県">静岡県</option>
+          <option value="愛知県">愛知県</option>
+          <option value="三重県">三重県</option>
+          <option value="滋賀県">滋賀県</option>
+          <option value="京都府">京都府</option>
+          <option value="大阪府">大阪府</option>
+          <option value="兵庫県">兵庫県</option>
+          <option value="奈良県">奈良県</option>
+          <option value="和歌山県">和歌山県</option>
+          <option value="鳥取県">鳥取県</option>
+          <option value="島根県">島根県</option>
+          <option value="岡山県">岡山県</option>
+          <option value="広島県">広島県</option>
+          <option value="山口県">山口県</option>
+          <option value="徳島県">徳島県</option>
+          <option value="香川県">香川県</option>
+          <option value="愛媛県">愛媛県</option>
+          <option value="高知県">高知県</option>
+          <option value="福岡県">福岡県</option>
+          <option value="佐賀県">佐賀県</option>
+          <option value="長崎県">長崎県</option>
+          <option value="熊本県">熊本県</option>
+          <option value="大分県">大分県</option>
+          <option value="宮崎県">宮崎県</option>
+          <option value="鹿児島県">鹿児島県</option>
+          <option value="沖縄県">沖縄県</option>
+          <option value="海外">海外</option>
+        </select>
+        <iferror.pref><p class="error">[+error.pref+]</p></iferror></td>
+      </tr>
+      <tr>
+        <th><label for="f_addr">住所</label><span class="require">※</span></th>
+        <td>市区町村名 <input type="text" name="addr1" size="20" valid="1::市区町村名" /><span class="note">※[例] 品川区</span><br />
+        町名・番地 <input type="text" name="addr2" size="40" valid="1::町名・番地" /> <span class="note">※[例] 青葉台98-16</span><br />
+        建物名 <input type="text" name="addr3" size="40" /> <span class="note">※[例] ○×マンション 1085号室</span>
+        <iferror.(addr1,addr2)><p class="error">市区町村名、町名・番地は入力必須です</p></iferror></td>
+      </tr>
+      <tr>
+        <th><label for="f_tel">電話番号</label><span class="require">※</span></th>
+        <td><input type="text" name="tel" id="f_tel" size="30" valid="1:tel" /><br />
+        <iferror.tel><p class="error">[+error.tel+]</p></iferror>
+        <span class="note">確認のためもう一度入力してください</span><br /><input type="text" name="tel_confirm" size="30" valid="1:sameas(tel):電話番号(確認用)" />
+        <iferror.tel_confirm><p class="error">[+error.tel_confirm+]</p></iferror></td>
+      </tr>
+      <tr>
+        <th><label for="f_fax">FAX番号</label></th>
+        <td><input type="text" name="fax" id="f_fax" size="30" valid=":tel" />
+        <iferror.fax><p class="error">[+error.fax+]</p></iferror></td>
+      </tr>
+    </tbody>
+  </table>
+  </fieldset>
+  <fieldset><legend>お問い合わせ内容</legend>
+  <table>
+    <tbody>
+      <tr>
+        <th><label for="f_summary">お問い合わせ内容</label><span class="require">※</span></th>
+        <td>
+        <ol>
+          <li><input type="radio" name="summary" id="f_summary1" value="製品についてのお問い合わせ" valid="1::お問い合わせ内容" /><label for="f_summary1">製品についてのお問い合わせ</label></li>
+          <li><input type="radio" name="summary" id="f_summary2" value="その他" /><label for="f_summary2">その他</label></li>
+        </ol>
+        <iferror.summary><p class="error">[+error.summary+]</p></iferror></td>
+      </tr>
+      <tr>
+        <th><label for="f_message">メッセージ</label><span class="require">※</span></th>
+        <td><textarea name="message" id="f_message" cols="40" rows="6" valid="1"></textarea><br />
+        <span class="note">※できるだけ詳しくご記入下さい</span>
+        <iferror.message><p class="error">[+error.message+]</p></iferror></td>
+      </tr>
+      <tr>
+        <th><label for="f_way">優先する連絡方法</label><span class="require">※</span></th>
+        <td><input type="radio" name="way" id="f_way1" value="メール" valid="1::優先する連絡方法" /><label for="f_way1">メール</label>
+          <input type="radio" name="way" id="f_way2" value="電話" /><label for="f_way2">電話</label>
+        <iferror.way><p class="error">[+error.way+]</p></iferror></td>
+      </tr>
+    </tbody>
+  </table>
+  </fieldset>
+  <fieldset><legend>アンケート</legend>
+  <table>
+    <tbody>
+      <tr>
+        <th><label for="f_own">既にお持ちの商品をお選びください</label></th>
+        <td>
+          <input type="checkbox" name="own[]" id="f_own1" value="ライトサーベル" /><label for="f_own1">ライトサーベル</label>
+          <input type="checkbox" name="own[]" id="f_own2" value="電動スノーボード" /><label for="f_own2">電動スノーボード</label>
+          <input type="checkbox" name="own[]" id="f_own3" value="ですの音" /><label for="f_own3">ですの音</label>
+          <input type="checkbox" name="own[]" id="f_own4" value="メタボリックの素" /><label for="f_own4">メタボリックの素</label>
+          <input type="checkbox" name="own[]" id="f_own5" value="どれも持っていない" /><label for="f_own5">どれも持っていない</label>
+        </td>
+      </tr>
+      <tr>
+        <th><label for="f_impression">印象に残った商品をお選びください</label></th>
+        <td>
+          <input type="checkbox" name="impression[]" id="f_impression1" value="なし" /><label for="f_impression1">なし</label><br />
+          <input type="checkbox" name="impression[]" id="f_impression2" value="ライトサーベル" /><label for="f_impression2">ライトサーベル</label>
+          <input type="checkbox" name="impression[]" id="f_impression3" value="電動スノーボード" /><label for="f_impression3">電動スノーボード</label>
+          <input type="checkbox" name="impression[]" id="f_impression4" value="ですの音" /><label for="f_impression4">ですの音</label>
+          <input type="checkbox" name="impression[]" id="f_impression5" value="メタボリックの素" /><label for="f_impression5">メタボリックの素</label>
+        </td>
+      </tr>
+    </tbody>
+  </table>
+  </fieldset>
+  <fieldset><legend><label for="f_veri">画像認証</label></legend>
+    <img src="[+verimageurl+]" alt="認証コード" />
+    <p>見えている文字を入力してください。 <input type="text" name="veri" size="20" id="f_veri" valid="1:vericode" /></p>
+    <iferror.veri><p class="error">[+error.veri+]</p></iferror></fieldset>
+  
+  <p class="buttons"><input type="submit" value="　内容確認へ　" /> <input type="reset" value="リセット" /></p>
+</form>

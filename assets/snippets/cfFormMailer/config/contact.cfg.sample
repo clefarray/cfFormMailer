@@ -20,11 +20,11 @@ attach_file =
 attach_file_name =
 
 # テンプレート (チャンク名またはリソースIDで指定）
-tmpl_input = @FILE:tpl/web_form.tpl.html
-tmpl_conf = @FILE:tpl/web_confirm.tpl.html
-tmpl_comp = @FILE:tpl/web_thanks.tpl.html
-tmpl_mail_admin = @FILE:tpl/mail_receive.tpl.txt
-tmpl_mail_reply = @FILE:tpl/mail_autoreply.tpl.txt
+tmpl_input = @FILE:tpl/web_form.tpl
+tmpl_conf = @FILE:tpl/web_confirm.tpl
+tmpl_comp = @FILE:tpl/web_thanks.tpl
+tmpl_mail_admin = @FILE:tpl/mail_receive.tpl
+tmpl_mail_reply = @FILE:tpl/mail_autoreply.tpl
 tmpl_mail_reply_mobile =
 complete_redirect =
 
