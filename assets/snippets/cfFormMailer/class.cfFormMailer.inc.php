@@ -735,7 +735,9 @@ class Class_cfFormMailer
             }
         }
 
-            foreach ($_SESSION['_cf_uploaded'] as $attach_file) {
+        if (sessionv('cf_uploaded')) {
+            $uploaded = sessionv('cf_uploaded');
+            foreach ($uploaded as $attach_file) {
                 if (!is_file($attach_file['path'])) {
                     continue;
                 }
@@ -748,7 +750,8 @@ class Class_cfFormMailer
                     )
                 );
             }
-            $sent = $pm->Send();
+        }
+        $sent = $pm->Send();
 
         if (!$sent) {
             $errormsg = 'メール送信に失敗しました::' . $pm->ErrorInfo;
