@@ -15,7 +15,7 @@ $viewFileName = 'cfFileView';
 if ($modx->event->name!=='OnPageNotFound') return;
 if ($modx->documentIdentifier !== $viewFileName) return;
 
-$field = isset($_GET['field']) ? $_GET['field'] : '';
+$field = getv('field', '');
 
 if (!$field) exit;
 if (!isset($_SESSION['_cf_uploaded'][$field])) exit;

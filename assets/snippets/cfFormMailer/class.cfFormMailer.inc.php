@@ -802,8 +802,8 @@ class Class_cfFormMailer
     }
     private function makePh($form, $adminmail)
     {
-        $remote_addr = isset($_SERVER['REMOTE_ADDR']) ? $_SERVER['REMOTE_ADDR'] : '';
-        $user_agent = isset($_SERVER['HTTP_USER_AGENT']) ? $_SERVER['HTTP_USER_AGENT'] : '';
+        $remote_addr = serverv('REMOTE_ADDR', '');
+        $user_agent = serverv('HTTP_USER_AGENT', '');
 
         $additional = array(
             'senddate'    => date('Y-m-d H:i:s'),
@@ -2429,30 +2429,6 @@ class Class_cfFormMailer
         }
 
         return sprintf($param, $text);
-    }
-}
-
-if (!function_exists('array_get')) {
-    function array_get($array, $key, $default = null)
-    {
-        if (!is_array($array)) {
-            return $default;
-        }
-        if (!isset($array[$key])) {
-            return $default;
-        }
-        return $array[$key];
-    }
-}
-
-if (!function_exists('array_set')) {
-    function array_set(&$array, $key, $value)
-    {
-        if (!is_array($array)) {
-            $array = array();
-        }
-        $array[$key] = $value;
-        return $value;
     }
 }
 
