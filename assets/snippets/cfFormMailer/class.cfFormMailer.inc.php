@@ -86,8 +86,9 @@ class Class_cfFormMailer
             )
         );
 
-        if (isset($_SESSION['_cf_autosave'])) {
-            $text = $this->restoreForm($text, $_SESSION['_cf_autosave']);
+        $autosave = sessionv('_cf_autosave');
+        if ($autosave) {
+            $text = $this->restoreForm($text, $autosave);
         }
 
         // 余った<iferror>タグ、プレースホルダを削除
@@ -182,8 +183,9 @@ class Class_cfFormMailer
 
         $text = $this->restoreForm($text, $this->form);
         // アップロード済みのファイルを削除
-        if (is_array($_SESSION['_cf_uploaded']) && count($_SESSION['_cf_uploaded'])) {
-            foreach ($_SESSION['_cf_uploaded'] as $filedata) {
+        $uploaded = sessionv('_cf_uploaded');
+        if (is_array($uploaded) && count($uploaded)) {
+            foreach ($uploaded as $filedata) {
                 @unlink($filedata['path']);
             }
             unset($_SESSION['_cf_uploaded']);
@@ -284,7 +286,7 @@ class Class_cfFormMailer
     {
 
         if ($this->config('complete_redirect')) {
-            if (isset($_SESSION['_cf_autosave'])) {
+            if (sessionv('_cf_autosave')) {
                 unset($_SESSION['_cf_autosave']);
             }
             if (!preg_match('/^[1-9][0-9]*$/', $this->config('complete_redirect'))) {
@@ -377,9 +379,10 @@ class Class_cfFormMailer
             // 入力必須項目のチェック
             if ($method['required']) {
                 if ($method['type'] === 'file') {
+                    $uploaded_file = sessionv("_cf_uploaded.{$field}");
                     if (
-                        (!isset($_SESSION['_cf_uploaded'][$field]) || !is_file($_SESSION['_cf_uploaded'][$field]['path']))
-                        && (!isset($_POST['return']) && empty($_FILES[$field]['tmp_name']))
+                        (!$uploaded_file || !is_file($uploaded_file['path']))
+                        && (!postv('return') && empty($_FILES[$field]['tmp_name']))
                     ) {
                         $this->setFormError($field, $this->adaptEncoding($method['label']), '選択必須項目です');
                     }
@@ -582,7 +585,7 @@ class Class_cfFormMailer
             return false;
         }
 
-        if (isset($_SESSION['_cf_autosave'])) {
+        if (sessionv('_cf_autosave')) {
             unset($_SESSION['_cf_autosave']);
         }
 
@@ -649,8 +652,9 @@ class Class_cfFormMailer
 
         // ユーザーからのファイル送信
         $upload_flag = false;
-        if (isset($_SESSION['_cf_uploaded']) && count($_SESSION['_cf_uploaded'])) {
-            foreach ($_SESSION['_cf_uploaded'] as $attach_file) {
+        $uploaded = sessionv('_cf_uploaded');
+        if (is_array($uploaded) && count($uploaded)) {
+            foreach ($uploaded as $attach_file) {
                 if (!is_file($attach_file['path'])) {
                     continue;
                 }
@@ -770,13 +774,14 @@ class Class_cfFormMailer
 
     public function cleanUploadedFiles()
     {
-        if (empty($_SESSION['_cf_uploaded'])) {
+        $uploaded = sessionv('_cf_uploaded');
+        if (empty($uploaded)) {
             return;
         }
-        if (!is_array($_SESSION['_cf_uploaded'])) {
+        if (!is_array($uploaded)) {
             return;
         }
-        foreach ($_SESSION['_cf_uploaded'] as $attach_file) {
+        foreach ($uploaded as $attach_file) {
             unlink($attach_file['path']);
         }
         unset($_SESSION['_cf_uploaded']);
@@ -826,15 +831,14 @@ class Class_cfFormMailer
     {
         if (!$this->config('dynamic_send_to_field')) {
             $mails = explode(',', $this->config('admin_mail'));
-        } elseif (empty($_SESSION['dynamic_send_to'])) {
-            $mails = explode(',', $this->config('admin_mail'));
-        } elseif (!$this->form[$this->config('dynamic_send_to_field')]) {
-            $mails = explode(',', $this->config('admin_mail'));
         } else {
-            $mails = explode(
-                ',',
-                $_SESSION['dynamic_send_to'][$this->form[$this->config('dynamic_send_to_field')]]
-            );
+            $dynamic_send_to = sessionv('dynamic_send_to');
+            $field_value = $this->form[$this->config('dynamic_send_to_field')];
+            if (empty($dynamic_send_to) || !$field_value) {
+                $mails = explode(',', $this->config('admin_mail'));
+            } else {
+                $mails = explode(',', $dynamic_send_to[$field_value]);
+            }
         }
         $admin_addresses = array();
         foreach ($mails as $buf) {
@@ -855,10 +859,11 @@ class Class_cfFormMailer
      */
     public function isValidToken($token)
     {
-        if (empty($_SESSION['_cffm_token'])) {
+        $session_token = sessionv('_cffm_token');
+        if (empty($session_token)) {
             return false;
         }
-        $isValid = $_SESSION['_cffm_token'] === $token;
+        $isValid = $session_token === $token;
         unset($_SESSION['_cffm_token']);
         return $isValid;
     }
@@ -872,7 +877,7 @@ class Class_cfFormMailer
      */
     public function alreadySent()
     {
-        return ($this->form === $_SESSION['_cffm_recently_send']);
+        return ($this->form === sessionv('_cffm_recently_send'));
     }
 
     /**
@@ -2078,7 +2083,7 @@ class Class_cfFormMailer
         if (!$this->config('vericode')) {
             return true;
         }
-        if ($_SESSION['veriword'] == $value) {
+        if (sessionv('veriword') == $value) {
             return true;
         }
 
