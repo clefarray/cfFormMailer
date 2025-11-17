@@ -367,11 +367,11 @@ class Class_cfFormMailer
             // 初期変換
             if ($method['type'] !== 'textarea') {
                 // <textarea>タグ以外は改行を削除
-                if (is_array($this->form[$field])) {
+                if (is_array($this->form[$field] ?? null)) {
                     foreach ($this->form[$field] as $k => $v) {
                         $this->form[$field][$k] = strtr($v, array("\r" => '', "\n" => ''));
                     }
-                } else {
+                } elseif (isset($this->form[$field])) {
                     $this->form[$field] = strtr($this->form[$field], array("\r" => '', "\n" => ''));
                 }
             }
@@ -380,13 +380,14 @@ class Class_cfFormMailer
             if ($method['required']) {
                 if ($method['type'] === 'file') {
                     $uploaded_file = sessionv("_cf_uploaded.{$field}");
+                    $file_tmp_name = $_FILES[$field]['tmp_name'] ?? '';
                     if (
                         (!is_array($uploaded_file) || !is_file($uploaded_file['path']))
-                        && (!postv('return') && empty($_FILES[$field]['tmp_name']))
+                        && (!postv('return') && empty($file_tmp_name))
                     ) {
                         $this->setFormError($field, $this->adaptEncoding($method['label']), '選択必須項目です');
                     }
-                } elseif ((is_array($this->form[$field]) && !count($this->form[$field])) || $this->form[$field] == '') {
+                } elseif ((is_array($this->form[$field] ?? null) && !count($this->form[$field])) || ($this->form[$field] ?? '') == '') {
                     $this->setFormError(
                         $field,
                         $this->adaptEncoding($method['label']),
@@ -396,7 +397,9 @@ class Class_cfFormMailer
             }
 
             // 入力値の検証
-            if ($this->form[$field] || $_FILES[$field]['tmp_name'] || $this->form[$field] === '0') {
+            $field_value = $this->form[$field] ?? '';
+            $file_tmp_name = $_FILES[$field]['tmp_name'] ?? '';
+            if ($field_value || $file_tmp_name || $field_value === '0') {
                 $methods = explode(',', $method['method']);
                 foreach ($methods as $indiv_m) {
                     $method_name = array();
@@ -413,7 +416,7 @@ class Class_cfFormMailer
                     // 標準メソッドを処理
                     $funcName = '_def_' . $method_func;
                     if (is_callable(array($this, $funcName))) {
-                        $result = $this->$funcName($this->form[$field], $method_param, $field);
+                        $result = $this->$funcName($field_value, $method_param, $field);
                         if ($result !== true) {
                             $this->setFormError($field, $this->adaptEncoding($method['label']), $result);
                         }
@@ -421,7 +424,7 @@ class Class_cfFormMailer
                     // ユーザー追加メソッドを処理
                     $funcName = '_validate_' . $method_func;
                     if (is_callable($funcName)) {
-                        $result = $funcName($this->form[$field], $method_param);
+                        $result = $funcName($field_value, $method_param);
                         if ($result !== true) {
                             $this->setFormError($field, $this->adaptEncoding($method['label']), $this->adaptEncoding($result));
                         }
@@ -2026,7 +2029,7 @@ class Class_cfFormMailer
     {
         // 強制的に半角に変換します。
         $this->form[$field] = mb_convert_kana(
-            $this->form[$field],
+            $this->form[$field] ?? '',
             'n',
             $this->config('charset')
         );
@@ -2045,7 +2048,7 @@ class Class_cfFormMailer
     {
         // 強制的に半角に変換します。
         $this->form[$field] = mb_convert_kana(
-            $this->form[$field],
+            $this->form[$field] ?? '',
             'a',
             $this->config('charset')
         );
@@ -2180,7 +2183,7 @@ class Class_cfFormMailer
     private function _def_tel($value, $param, $field)
     {
         // 強制的に半角に変換します。
-        $this->form[$field] = mb_convert_kana($this->form[$field], 'a', $this->config('charset'));
+        $this->form[$field] = mb_convert_kana($this->form[$field] ?? '', 'a', $this->config('charset'));
         $this->form[$field] = preg_replace('@([0-9])ー@u', '$1-', $this->form[$field]);
         if ((strpos($this->form[$field], '0') === 0)) {
             $checkLen = 10;
@@ -2206,7 +2209,7 @@ class Class_cfFormMailer
     private function _def_zip($value, $param, $field)
     {
         // 強制的に半角に変換します。
-        $this->form[$field] = mb_convert_kana($this->form[$field], 'as', $this->config('charset'));
+        $this->form[$field] = mb_convert_kana($this->form[$field] ?? '', 'as', $this->config('charset'));
         $this->form[$field] = preg_replace('/[^0-9]/', '', $this->form[$field]);
         $str = $this->form[$field];
 
@@ -2225,8 +2228,8 @@ class Class_cfFormMailer
      */
     private function _def_allowtype($value, $param, $field)
     {
-
-        if (empty($_FILES[$field]['tmp_name']) || !is_uploaded_file($_FILES[$field]['tmp_name'])) {
+        $file_tmp_name = $_FILES[$field]['tmp_name'] ?? '';
+        if (empty($file_tmp_name) || !is_uploaded_file($file_tmp_name)) {
             return true;
         }
         $allow_list = explode('|', $param);
@@ -2234,7 +2237,7 @@ class Class_cfFormMailer
             return true;
         }
 
-        $mime = $this->_getMimeType($_FILES[$field]['tmp_name'], $field);
+        $mime = $this->_getMimeType($file_tmp_name, $field);
         if ($mime === false) {
             return '許可されたファイル形式ではありません';
         }
@@ -2267,7 +2270,8 @@ class Class_cfFormMailer
      */
     private function _def_allowsize($value, $param, $field)
     {
-        if (empty($_FILES[$field]['tmp_name']) || !is_uploaded_file($_FILES[$field]['tmp_name'])) {
+        $file_tmp_name = $_FILES[$field]['tmp_name'] ?? '';
+        if (empty($file_tmp_name) || !is_uploaded_file($file_tmp_name)) {
             return true;
         }
 
@@ -2275,7 +2279,7 @@ class Class_cfFormMailer
             return false;
         }
 
-        $size = @stat($_FILES[$field]['tmp_name']);
+        $size = @stat($file_tmp_name);
         if ($size === false) {
             return 'ファイルのアップロードに失敗しました';
         }
@@ -2302,7 +2306,7 @@ class Class_cfFormMailer
             $param = 'K';
         }
         $this->form[$field] = mb_convert_kana(
-            $this->form[$field],
+            $this->form[$field] ?? '',
             $param,
             $this->config('charset')
         );
@@ -2321,7 +2325,7 @@ class Class_cfFormMailer
     private function _def_zenhan($value, $param = 'VKas', $field)
     {
         $this->form[$field] = mb_convert_kana(
-            $this->form[$field],
+            $this->form[$field] ?? '',
             $param,
             $this->config('charset')
         );
@@ -2341,7 +2345,7 @@ class Class_cfFormMailer
     private function _def_hanzen($value, $param = 'VKAS', $field)
     {
         $this->form[$field] = mb_convert_kana(
-            $this->form[$field],
+            $this->form[$field] ?? '',
             $param,
             $this->config('charset')
         );
