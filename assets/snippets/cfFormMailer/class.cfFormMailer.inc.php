@@ -381,7 +381,7 @@ class Class_cfFormMailer
                 if ($method['type'] === 'file') {
                     $uploaded_file = sessionv("_cf_uploaded.{$field}");
                     if (
-                        (!$uploaded_file || !is_file($uploaded_file['path']))
+                        (!is_array($uploaded_file) || !is_file($uploaded_file['path']))
                         && (!postv('return') && empty($_FILES[$field]['tmp_name']))
                     ) {
                         $this->setFormError($field, $this->adaptEncoding($method['label']), '選択必須項目です');
@@ -742,8 +742,8 @@ class Class_cfFormMailer
             }
         }
 
-        if (sessionv('cf_uploaded')) {
-            $uploaded = sessionv('cf_uploaded');
+        $uploaded = sessionv('_cf_uploaded');
+        if (is_array($uploaded)) {
             foreach ($uploaded as $attach_file) {
                 if (!is_file($attach_file['path'])) {
                     continue;
@@ -2456,40 +2456,5 @@ if (!function_exists('db')) {
     {
         global $modx;
         return $modx->db;
-    }
-}
-
-if (!function_exists('getv')) {
-    function getv($key = null, $default = null)
-    {
-        $request = $_GET;
-        if (isset($request[$key]) && $request[$key] === '') {
-            unset($request[$key]);
-        }
-        return array_get($request, $key, $default);
-    }
-}
-
-if (!function_exists('postv')) {
-    function postv($key = null, $default = null)
-    {
-        return array_get($_POST, $key, $default);
-    }
-}
-
-if (!function_exists('serverv')) {
-    function serverv($key = null, $default = null)
-    {
-        return array_get($_SERVER, strtoupper($key), $default);
-    }
-}
-
-if (!function_exists('sessionv')) {
-    function sessionv($key = null, $default = null)
-    {
-        if (strpos($key, '*') === 0) {
-            return array_set($_SESSION, ltrim($key, '*'), $default);
-        }
-        return array_get($_SESSION, $key, $default);
     }
 }

@@ -20,8 +20,7 @@ $field = getv('field', '');
 if (!$field) exit;
 
 $uploaded_file = sessionv("_cf_uploaded.{$field}");
-if (!$uploaded_file) exit;
-if (!is_file($uploaded_file['path'])) exit;
+if (!is_array($uploaded_file) || !is_file($uploaded_file['path'])) exit;
 
 header('P3P: CP="NOI NID ADMa OUR IND UNI COM NAV"');
 header('Cache-Control: private, must-revalidate');
