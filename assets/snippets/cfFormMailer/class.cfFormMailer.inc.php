@@ -403,8 +403,8 @@ class Class_cfFormMailer
                     if (!preg_match("/^([^(]+)(\(([^)]*)\))?$/", $indiv_m, $method_name)) {
                         continue;
                     }
-                    $method_func = isset($method_name[1]) ? $method_name[1] : '';
-                    $method_param = isset($method_name[3]) ? $method_name[3] : '';
+                    $method_func = $method_name[1] ?? '';
+                    $method_param = $method_name[3] ?? '';
 
                     if (!$method_func) {
                         continue;
@@ -1265,7 +1265,7 @@ class Class_cfFormMailer
             if ($toFilter && strpos($m[1], ':') !== false) {
                 $parts = explode(':', $m[1], 2);
                 $m[1] = $parts[0];
-                $modifiers = isset($parts[1]) ? $parts[1] : false;
+                $modifiers = $parts[1] ?? false;
             } else {
                 $modifiers = false;
             }
@@ -1285,7 +1285,7 @@ class Class_cfFormMailer
                 }
             }
             // テキストフィルターの処理
-            $fType = isset($m[3]) ? $m[3] : '';
+            $fType = $m[3] ?? '';
             if (empty($fType)) {
                 $text = str_replace(
                     $m[0],
@@ -1296,7 +1296,7 @@ class Class_cfFormMailer
             }
             if (is_callable(array($this, '_f_' . $fType))) {
                 $funcName = '_f_' . $fType;
-                $fParam = isset($m[5]) ? $m[5] : '';
+                $fParam = $m[5] ?? '';
                 $text = str_replace(
                     $m[0],
                     $this->$funcName($val, $fParam),
@@ -1306,7 +1306,7 @@ class Class_cfFormMailer
             }
             if (is_callable('_filter_' . $fType)) {
                 $funcName = '_filter_' . $fType;
-                $fParam = isset($m[5]) ? $m[5] : '';
+                $fParam = $m[5] ?? '';
                 $text = str_replace(
                     $m[0],
                     $funcName($val, $fParam),
@@ -1474,9 +1474,9 @@ class Class_cfFormMailer
             // 検証メソッドを取得
             if (preg_match("/valid=([\"'])(.+?)\\1/", $v[0], $v_match)) {
                 $parts = explode(':', $v_match[2]);
-                $required = isset($parts[0]) ? $parts[0] : '';
-                $method = isset($parts[1]) ? $parts[1] : '';
-                $param = isset($parts[2]) ? $parts[2] : '';
+                $required = $parts[0] ?? '';
+                $method = $parts[1] ?? '';
+                $param = $parts[2] ?? '';
             } else {
                 $required = $method = $param = '';
             }
@@ -1861,11 +1861,11 @@ class Class_cfFormMailer
                 continue;
             }
             $parts = explode('=', $line, 2);
-            $key = isset($parts[0]) ? trim($parts[0]) : '';
+            $key = trim($parts[0] ?? '');
             if (!$key) {
                 continue;
             }
-            $val = isset($parts[1]) ? trim($parts[1]) : '';
+            $val = trim($parts[1] ?? '');
             $cfg[$key] = $val;
         }
 
