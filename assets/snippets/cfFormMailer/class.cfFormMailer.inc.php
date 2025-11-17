@@ -400,19 +400,28 @@ class Class_cfFormMailer
                 $methods = explode(',', $method['method']);
                 foreach ($methods as $indiv_m) {
                     $method_name = array();
-                    preg_match("/^([^(]+)(\(([^)]*)\))?$/", $indiv_m, $method_name);
+                    if (!preg_match("/^([^(]+)(\(([^)]*)\))?$/", $indiv_m, $method_name)) {
+                        continue;
+                    }
+                    $method_func = isset($method_name[1]) ? $method_name[1] : '';
+                    $method_param = isset($method_name[3]) ? $method_name[3] : '';
+
+                    if (!$method_func) {
+                        continue;
+                    }
+
                     // 標準メソッドを処理
-                    $funcName = '_def_' . $method_name[1];
+                    $funcName = '_def_' . $method_func;
                     if (is_callable(array($this, $funcName))) {
-                        $result = $this->$funcName($this->form[$field], $method_name[3], $field);
+                        $result = $this->$funcName($this->form[$field], $method_param, $field);
                         if ($result !== true) {
                             $this->setFormError($field, $this->adaptEncoding($method['label']), $result);
                         }
                     }
                     // ユーザー追加メソッドを処理
-                    $funcName = '_validate_' . $method_name[1];
+                    $funcName = '_validate_' . $method_func;
                     if (is_callable($funcName)) {
-                        $result = $funcName($this->form[$field], $method_name[3]);
+                        $result = $funcName($this->form[$field], $method_param);
                         if ($result !== true) {
                             $this->setFormError($field, $this->adaptEncoding($method['label']), $this->adaptEncoding($result));
                         }
@@ -453,6 +462,10 @@ class Class_cfFormMailer
             preg_match("/name=([\"'])(.+?)\\1/i", $tag[0], $m_name);
             preg_match("/value=([\"'])(.*?)\\1/i", $tag[0], $m_value);
 
+            if (!isset($m_name[2]) || !isset($m_type[2])) {
+                continue;
+            }
+
             $fieldName = str_replace('[]', '', $m_name[2]);
             // 復元処理しないタグ
             if ($fieldName === '_mode') {
@@ -487,13 +500,13 @@ class Class_cfFormMailer
                 }
                 // チェックボックス
             } elseif ($tag[1] === 'input' && $fieldType === 'checkbox') {
-                if ($m_value[2] == $params[$fieldName] || (is_array($params[$fieldName]) && in_array($m_value[2], $params[$fieldName]))) {
+                if (isset($m_value[2]) && ($m_value[2] == $params[$fieldName] || (is_array($params[$fieldName]) && in_array($m_value[2], $params[$fieldName])))) {
                     $pat = $tag[2];
                     $rep = $tag[2] . ' checked="checked"';
                 }
                 // ラジオボタン
             } elseif ($tag[1] === 'input' && $fieldType === 'radio') {
-                if ($m_value[2] == $params[$fieldName]) {
+                if (isset($m_value[2]) && $m_value[2] == $params[$fieldName]) {
                     $pat = $tag[2];
                     $rep = $tag[2] . ' checked="checked"';
                 }
@@ -1564,8 +1577,10 @@ class Class_cfFormMailer
     {
         // 項目タイプを取得
         if ($v[1] === 'input') {
-            preg_match("/type=([\"'])(.+?)\\1/", $v[0], $t_match);
-            return $t_match[2];
+            if (preg_match("/type=([\"'])(.+?)\\1/", $v[0], $t_match) && isset($t_match[2])) {
+                return $t_match[2];
+            }
+            return 'text'; // デフォルトのinputタイプ
         }
         return $v[1];
     }
