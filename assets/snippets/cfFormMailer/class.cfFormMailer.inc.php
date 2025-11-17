@@ -1285,7 +1285,7 @@ class Class_cfFormMailer
                 }
             }
             // テキストフィルターの処理
-            $fType = $m[3];
+            $fType = isset($m[3]) ? $m[3] : '';
             if (empty($fType)) {
                 $text = str_replace(
                     $m[0],
@@ -1296,18 +1296,20 @@ class Class_cfFormMailer
             }
             if (is_callable(array($this, '_f_' . $fType))) {
                 $funcName = '_f_' . $fType;
+                $fParam = isset($m[5]) ? $m[5] : '';
                 $text = str_replace(
                     $m[0],
-                    $this->$funcName($val, $m[5]),
+                    $this->$funcName($val, $fParam),
                     $text
                 );
                 continue;
             }
             if (is_callable('_filter_' . $fType)) {
                 $funcName = '_filter_' . $fType;
+                $fParam = isset($m[5]) ? $m[5] : '';
                 $text = str_replace(
                     $m[0],
-                    $funcName($val, $m[5]),
+                    $funcName($val, $fParam),
                     $text
                 );
                 continue;
