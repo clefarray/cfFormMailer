@@ -1,7 +1,7 @@
 cfFormMailerマニュアル
 =================
 
-**v1.3**
+**v1.7.0**
 
 * 設置＆使用方法
 * 機能解説
@@ -17,7 +17,7 @@ cfFormMailerマニュアル
 1.  /assets/snippets/ フォルダ内に **cfFormMailer** というフォルダを作成し、そのフォルダ内に以下のファイルを配置（アップロード）します。
 
     * class.cfFormMailer.inc.php
-    * phpmailer_ex.php
+    * bootstrap.php
     * additionalMethods.inc.php (※独自検証メソッドまたは独自フィルターメソッドを追加しない場合は、アップロードしなくても構いません。）
 2.  （ファイルアップロードを使用する場合） [class.upload.php](http://www.verot.net/php_class_upload.htm)を /assets/snippets/cfFormMailer/ フォルダにアップロードします。（任意）
     ※「ユーザーがアップロードしたファイルの添付送信」参照  
@@ -33,9 +33,9 @@ cfFormMailerマニュアル
     * スニペット名： cfFormMailer  
     * スニペットコード欄： ファイル snippet.cfFormMailer.php の内容をコピー＆ペースト
 
-6.  「環境設定」として利用するチャンクを作成します。  
-    * チャンク名： 任意 ※スニペットコール時に、ここで作成したチャンク名を指定します。
-    * チャンクコード： chunk_sample フォルダ内のファイル tmpl.chunk_config.txt の内容をすべてコピー＆ペースト
+6.  「環境設定」として利用する設定ファイルを作成します。
+    * 設定ファイルは、/assets/snippets/cfFormMailer/forms/sample/ フォルダ内の config.with_comment.ini をコピーして作成することができます。
+    * スニペットコール時に、設定ファイルのパスまたはチャンク名を指定します。
 
 7.  各設定項目の値をご利用の環境に合わせて書き換え、保存してください。  
     `#` で始まる行はコメントです。
@@ -48,7 +48,7 @@ cfFormMailerマニュアル
 
 ##### 管理者メール送信先 [admin_mail]
 
-フォームの送信先メールアドレスを指定します。半角コンマ区切りで複数のメールアドレスを指定することができますが、複数のメールアドレスに送信したい場合はadmin_ccやadmin_bccの使用をおすすめします。
+フォームの送信先メールアドレスを指定します。半角コンマ区切りで複数のメールアドレスを指定することができますが、複数のメールアドレスに送信したい場合はadmin_mail_ccやadmin_mail_bccの使用をおすすめします。
 
 - `[デフォルト]` MODXグローバル設定の「送信者メールアドレス」
 
@@ -72,16 +72,16 @@ cfFormMailerマニュアル
 - `[設定値]` 0・・・テキストメール / 1・・・HTMLメール  
 - `[デフォルト]` 0
 
-##### 管理者宛CCメール送信先 [admin_cc]
+##### 管理者宛CCメール送信先 [admin_mail_cc]
 
 管理者宛メールと同時にCCで送るアドレスを指定します。半角コンマ区切りで複数のアドレスを指定できます。
 
-- `[設定例]` admin_cc = test@example.com,info@example.jp
+- `[設定例]` admin_mail_cc = test@example.com,info@example.jp
 
-##### 管理者宛BCCメール送信先 [admin_bcc]
-管理者宛メールと同時にBCCで送るアドレスを指定します。半角コンマ区切りで複数のアドレスを指定できます。  
+##### 管理者宛BCCメール送信先 [admin_mail_bcc]
+管理者宛メールと同時にBCCで送るアドレスを指定します。半角コンマ区切りで複数のアドレスを指定できます。
 
-- `[設定例]` admin_bcc = test@example.com,info@example.jp
+- `[設定例]` admin_mail_bcc = test@example.com,info@example.jp
 
 ##### 管理者アドレスの動的変更 [dynamic_send_to_field]
 フォーム中の特定項目の選択肢によって管理者メールアドレスを動的に変更する場合に、その項目名を指定します。  
@@ -274,70 +274,66 @@ v1.2までは日本語メール送信における一般的な設定値である�
 
 ### 【テンプレートの作成 】
 
-入力・確認・完了の各画面や、送信されるメールのテンプレートは、チャンクまたはリソースによって管理されます。  
-各画面のテンプレートとなるチャンク名はあらかじめ設定されていますが、これらは環境設定チャンク内で変更できます。  
-パッケージのchunk_sampleフォルダ内に各チャンクのサンプルコードがありますので、参考にしてみて下さい。
+入力・確認・完了の各画面や、送信されるメールのテンプレートは、チャンクまたはリソース、ファイルによって管理されます。
+各画面のテンプレートとなるチャンク名やファイルパスは設定ファイル内で指定できます。
+/assets/snippets/cfFormMailer/forms/sample/ フォルダ内に各テンプレートのサンプルがありますので、参考にしてみて下さい。
 
-1.  「入力画面」テンプレートの作成  
+1.  「入力画面」テンプレートの作成
 
-      任意の名称（デフォルト：tmpl_input）で新規チャンクを作成し、入力画面のHTMLを記述します。  
+      任意の名称（デフォルト：tmpl_input）で新規チャンクを作成し、入力画面のHTMLを記述します。
 
-      サンプル： form.html
+      サンプル： web_form.tpl.html
 
-2.  「確認画面」テンプレートの作成  
+2.  「確認画面」テンプレートの作成
 
-      任意の名称（デフォルト：tmpl_conf）で新規チャンクを作成し、確認画面のHTMLを記述します。  
+      任意の名称（デフォルト：tmpl_conf）で新規チャンクを作成し、確認画面のHTMLを記述します。
 
-      サンプル： confirm.html
+      サンプル： web_confirm.tpl.html
 
-3.  「完了画面」テンプレートの作成  
+3.  「完了画面」テンプレートの作成
 
     任意の名称（デフォルト：tmpl_comp）で新規チャンクを作成し、完了画面のHTMLを記述します。
 
-    サンプル： thanks.html
+    サンプル： web_thanks.tpl.html
 
-4.  「管理者宛メール」テンプレートの作成  
+4.  「管理者宛メール」テンプレートの作成
 
-    任意の名称（デフォルト：tmpl_mail_admin）で新規チャンクを作成し、管理者宛メールの本文テンプレートを記述します。      
+    任意の名称（デフォルト：tmpl_mail_admin）で新規チャンクを作成し、管理者宛メールの本文テンプレートを記述します。
 
-    サンプル： mail.txt
+    サンプル： mail_receive.tpl.txt
 
-5.  「自動返信メール」テンプレートの作成  
+5.  「自動返信メール」テンプレートの作成
 
-    任意の名称（デフォルト：tmpl_mail_reply）で新規チャンクを作成し、自動返信メールの本文テンプレートを記述します。      
+    任意の名称（デフォルト：tmpl_mail_reply）で新規チャンクを作成し、自動返信メールの本文テンプレートを記述します。
 
-    サンプル： reply_mail.txt  
+    サンプル： mail_autoreply.tpl.txt（テキストメール）、mail_autoreply.tpl.html（HTMLメール）
 
 6.  「自動返信メール（モバイル用）」テンプレートの作成　※PCメール宛と携帯メール宛でテンプレートを変えたい場合
 
     任意の名称で新規チャンクを作成し、モバイル端末用の自動返信メール本文テンプレートを記述します。
 
-    ここで作成したチャンクの名称を、環境設定チャンク内の tmpl_mail_reply_mobile 項目に記述します。  
-
-    サンプル： mobile_reply_mail.txt  
+    ここで作成したチャンクの名称を、設定ファイル内の tmpl_mail_reply_mobile 項目に記述します。  
 
 ### 【旧バージョンからのバージョンアップ】
 
-【v1.2からのバージョンアップ】  
-assets/snippets/cfFormMailer/class.cfFormMailer.inc.phpのみ差し替えます。  
-必要に応じて、v1.3以降新たに追加された環境設定項目を環境設定チャンクに追加、設定します。  
+【v1.6からのバージョンアップ】
+assets/snippets/cfFormMailer/フォルダ内のすべてのファイルを置き換え、スニペットの内容をsnippet.cfFormMailer.phpと置き換えます。
+設定ファイルやテンプレートは従来のものがそのまま使用できます。
 
-【v1.0/v1.1からのバージョンアップ】  
-assets/snippets/cfFormMailer/フォルダ 内のすべてのファイルを置き換えます。  
-必要に応じて、新たに追加された環境設定項目を環境設定チャンクに追加、設定します。  
-【v1.0以前からのバージョンアップの場合】  
-スニペット内に独自検証メソッド、独自フィルターを定義している場合は、スニペット内からadditionalMethods.inc.phpファイル内に転記します。  
-その後、assets/snippets/cfFormMailer/フォルダ 内のすべてのファイルを置き換え、MODx 内スニペットの内容をsnippet.cfFormMailer.phpと置き換えます。  
-※ 各テンプレートはそのまま利用できます。  
-※ 環境設定チャンクも従来のものがそのまま使用できますが、設定項目が増えていますので、上記インストール手順5 で最新のものに変更し再定義することをお勧めします。
+【v1.3以前からのバージョンアップ】
+assets/snippets/cfFormMailer/フォルダ内のすべてのファイルを置き換え、スニペットの内容をsnippet.cfFormMailer.phpと置き換えます。
+設定ファイルの形式が変更されているため、新しい.ini形式の設定ファイルに移行することをお勧めします。
+サンプルファイルの配置が変更されています（forms/sampleフォルダに移動）。
+独自検証メソッド、独自フィルターを定義している場合は、additionalMethods.inc.phpファイル内に定義してください。
 
 ### 【スニペットコール書式】
 
 ```
-[!cfFormMailer?&config=`環境設定チャンク名`!]
+[!cfFormMailer?&config=`設定ファイル名またはチャンク名`!]
 ```
 
-config パラメータは必須で、【インストール】手順5で作成した「環境設定チャンク」の名称を指定します。
+config パラメータは必須で、設定ファイルのパスまたはチャンク名を指定します。
+ファイルパスで指定する場合は、@FILE:相対パス の形式で指定します（例：@FILE:forms/myform/config.ini）。
 
 ## 機能解説
 
@@ -907,14 +903,47 @@ http://www.clefarray-web.net/blog/
 ■ 更新履歴
 -------
 
+2025-XX-XX v1.7.0
+[CHANGE] バージョン番号を1.6.1から1.7.0に更新
+
+[FIX] セッションからのファイルアップロード処理の改善
+
+[FIX] 各種バグ修正とコードクリーンアップ
+
+2020-03-03 v1.6
+[CHANGE] ディレクトリ構成の変更（サンプルファイルをforms/sampleへ移動）
+
+[CHANGE] 設定ファイル形式を.ini形式に変更
+
+[NEW] @FILE:パス形式でのテンプレート指定をサポート
+
+[NEW] スパム判定機能の追加 (isSpam)
+
+[FIX] PHP7対応
+
+[FIX] 非公開リソースに設定を書いた場合の動作修正
+
+[FIX] 複数行で記述されたフォームタグの解析改善
+
+[FIX] 異体字（草彅・山﨑など）の文字化け対策
+
+[CHANGE] get_magic_quotes_gpc()の削除（PHP7.4対応）
+
+[CHANGE] コードのリファクタリング
+
+2015-03-02 v1.4
+[CHANGE] MODXMailerを直接使用するように変更（phpmailer_ex.php削除）
+
+[FIX] 各種バグ修正
+
 2013-05-23 v1.3
-[NEW] 管理者メールのCC, BCC送信　（admin_mail_cc, admin_mail_bcc)  
+[NEW] 管理者メールのCC, BCC送信　（admin_mail_cc, admin_mail_bcc)
 
-[NEW] メール送信文字コードの指定 (mail_charset)  
+[NEW] メール送信文字コードの指定 (mail_charset)
 
-[NEW] 送信後遷移する完了画面を指定可能に（complete_redirect)  
+[NEW] 送信後遷移する完了画面を指定可能に（complete_redirect)
 
-[NEW] 選択肢による管理者メール送信先の動的変更 (dynamic_send_to_field )  
+[NEW] 選択肢による管理者メール送信先の動的変更 (dynamic_send_to_field )
 
 [CHANGE] 設定チャンクサンプルconfig_chunk.txtでの「reply_to」「use_store_db」「vericode」の初期値変更
 2011-04-04 v1.2
