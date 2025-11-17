@@ -2393,7 +2393,7 @@ class Class_cfFormMailer
         }
 
         // PHP 8.1以降の代替実装
-        $datetime = new DateTime($text);
+        $datetime = (new DateTime())->setTimestamp($timestamp);
 
         // strftimeフォーマットをDateTimeフォーマットに変換
         $format_map = [
