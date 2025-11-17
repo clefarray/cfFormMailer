@@ -1250,7 +1250,9 @@ class Class_cfFormMailer
         $replaceKeys = array_keys($params);
         foreach ($match as $m) {
             if ($toFilter && strpos($m[1], ':') !== false) {
-                list($m[1], $modifiers) = explode(':', $m[1], 2);
+                $parts = explode(':', $m[1], 2);
+                $m[1] = $parts[0];
+                $modifiers = isset($parts[1]) ? $parts[1] : false;
             } else {
                 $modifiers = false;
             }
@@ -1456,7 +1458,10 @@ class Class_cfFormMailer
         foreach ($match as $v) {
             // 検証メソッドを取得
             if (preg_match("/valid=([\"'])(.+?)\\1/", $v[0], $v_match)) {
-                list($required, $method, $param) = explode(':', $v_match[2]);
+                $parts = explode(':', $v_match[2]);
+                $required = isset($parts[0]) ? $parts[0] : '';
+                $method = isset($parts[1]) ? $parts[1] : '';
+                $param = isset($parts[2]) ? $parts[2] : '';
             } else {
                 $required = $method = $param = '';
             }
@@ -1838,12 +1843,13 @@ class Class_cfFormMailer
             if (strpos($line, '#') === 0 || !preg_match('/[a-zA-Z0-9=]/', $line)) {
                 continue;
             }
-            list($key, $val) = explode('=', $line, 2);
-            $key = trim($key);
+            $parts = explode('=', $line, 2);
+            $key = isset($parts[0]) ? trim($parts[0]) : '';
             if (!$key) {
                 continue;
             }
-            $cfg[$key] = trim($val);
+            $val = isset($parts[1]) ? trim($parts[1]) : '';
+            $cfg[$key] = $val;
         }
 
         $this->cfg = $cfg;
