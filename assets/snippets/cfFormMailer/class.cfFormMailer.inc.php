@@ -313,7 +313,10 @@ class Class_cfFormMailer
 
     private function extension($tmp_name)
     {
-        $info = getimagesize($tmp_name);
+        $info = @getimagesize($tmp_name);
+        if ($info === false || !isset($info['mime'])) {
+            return '';
+        }
         return '.' . $this->_getType($info['mime']);
     }
 
@@ -799,12 +802,15 @@ class Class_cfFormMailer
     }
     private function makePh($form, $adminmail)
     {
+        $remote_addr = isset($_SERVER['REMOTE_ADDR']) ? $_SERVER['REMOTE_ADDR'] : '';
+        $user_agent = isset($_SERVER['HTTP_USER_AGENT']) ? $_SERVER['HTTP_USER_AGENT'] : '';
+
         $additional = array(
             'senddate'    => date('Y-m-d H:i:s'),
             'adminmail'   => $adminmail,
-            'sender_ip'   => $_SERVER['REMOTE_ADDR'],
-            'sender_host' => gethostbyaddr($_SERVER['REMOTE_ADDR']),
-            'sender_ua'   => $this->encodeHTML($_SERVER['HTTP_USER_AGENT']),
+            'sender_ip'   => $remote_addr,
+            'sender_host' => $remote_addr ? gethostbyaddr($remote_addr) : '',
+            'sender_ua'   => $this->encodeHTML($user_agent),
             'reply_to'    => $this->getAutoReplyAddress(),
         );
         if (!$this->config('reply_ishtml')) {
@@ -2379,7 +2385,37 @@ class Class_cfFormMailer
             return array_map([$this, '_f_dateformat'], $text, $param);
         }
 
-        return strftime($param, strtotime($text));
+        $timestamp = strtotime($text);
+
+        // PHP 8.1未満の場合はstrftimeを使用
+        if (function_exists('strftime')) {
+            return strftime($param, $timestamp);
+        }
+
+        // PHP 8.1以降の代替実装
+        $datetime = new DateTime($text);
+
+        // strftimeフォーマットをDateTimeフォーマットに変換
+        $format_map = [
+            '%Y' => 'Y',  // 4桁の年
+            '%y' => 'y',  // 2桁の年
+            '%m' => 'm',  // 月（01-12）
+            '%d' => 'd',  // 日（01-31）
+            '%H' => 'H',  // 時（00-23）
+            '%M' => 'i',  // 分（00-59）
+            '%S' => 's',  // 秒（00-59）
+            '%B' => 'F',  // 月の完全名
+            '%b' => 'M',  // 月の短縮名
+            '%A' => 'l',  // 曜日の完全名
+            '%a' => 'D',  // 曜日の短縮名
+            '%e' => 'j',  // 日（1-31）
+            '%I' => 'h',  // 12時間制の時（01-12）
+            '%p' => 'A',  // AM/PM
+            '%w' => 'w',  // 曜日（0-6）
+        ];
+
+        $date_format = str_replace(array_keys($format_map), array_values($format_map), $param);
+        return $datetime->format($date_format);
     }
 
     /**
@@ -2393,6 +2429,30 @@ class Class_cfFormMailer
         }
 
         return sprintf($param, $text);
+    }
+}
+
+if (!function_exists('array_get')) {
+    function array_get($array, $key, $default = null)
+    {
+        if (!is_array($array)) {
+            return $default;
+        }
+        if (!isset($array[$key])) {
+            return $default;
+        }
+        return $array[$key];
+    }
+}
+
+if (!function_exists('array_set')) {
+    function array_set(&$array, $key, $value)
+    {
+        if (!is_array($array)) {
+            $array = array();
+        }
+        $array[$key] = $value;
+        return $value;
     }
 }
 
